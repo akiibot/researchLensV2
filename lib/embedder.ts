@@ -76,7 +76,7 @@ export function tokenize(text: string): string[] {
 
 /**
  * Computes term frequency for a document.
- * Returns a map of token → normalized frequency (count / total tokens).
+ * Returns a map of token to normalized frequency (count / total tokens).
  *
  * @param tokens - Array of tokens from the document
  * @returns Map of token to normalized term frequency

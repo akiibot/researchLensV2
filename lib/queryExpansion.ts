@@ -9,6 +9,7 @@
  */
 
 import { ResearchIdea } from './types';
+import { generateGeminiText, hasGeminiCredentials } from './geminiClient';
 
 /** Common English stopwords to filter out during keyword extraction */
 const STOPWORDS = new Set([
@@ -113,18 +114,15 @@ export function isBangla(text: string): boolean {
  * @returns English translation of the input
  */
 export async function translateBangla(text: string): Promise<string> {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey || apiKey === 'your_key_here' || apiKey === '') {
+  if (!hasGeminiCredentials()) {
     return text;
   }
 
   try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-    const response = await model.generateContent(`Translate this academic research idea from Bangla to English. Return only the translation, nothing else:\n\n"${text}"`);
-    const translatedText = response.response.text();
+    const translatedText = await generateGeminiText({
+      prompt: `Translate this academic research idea from Bangla to English. Return only the translation, nothing else:\n\n"${text}"`,
+      purpose: 'translation',
+    });
     
     const cleanTranslation = translatedText.trim().replace(/^"|"$/g, '');
     if (cleanTranslation) {
@@ -195,18 +193,15 @@ async function getLLMQueries(
   ideaText: string,
   field: string
 ): Promise<string[]> {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey || apiKey === 'your_key_here' || apiKey === '') {
+  if (!hasGeminiCredentials()) {
     return [];
   }
 
   try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-    const response = await model.generateContent(`Generate exactly 3 academic search queries for finding related papers on this research idea in the field of ${field}. Each query should use different synonyms or related terms. Return ONLY the 3 queries, one per line, no numbering or bullets.\n\nResearch idea: "${ideaText}"`);
-    const text = response.response.text();
+    const text = await generateGeminiText({
+      prompt: `Generate exactly 3 academic search queries for finding related papers on this research idea in the field of ${field}. Each query should use different synonyms or related terms. Return ONLY the 3 queries, one per line, no numbering or bullets.\n\nResearch idea: "${ideaText}"`,
+      purpose: 'queryExpansion',
+    });
     
     return text
       .split('\n')

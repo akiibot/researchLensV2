@@ -12,6 +12,7 @@
 
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import Link from 'next/link';
 import './globals.css';
 
 const geistSans = Geist({
@@ -50,7 +51,7 @@ export default function RootLayout({
         {/* Header */}
         <header className="border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
                 <span className="text-sm font-bold">RL</span>
               </div>
@@ -59,10 +60,30 @@ export default function RootLayout({
                   Research<span className="text-indigo-400">Lens</span>
                 </h1>
               </div>
-            </div>
-            <p className="hidden sm:block text-xs text-slate-400 font-medium">
-              Find the gap. Fill the gap. Skip the wasted months.
-            </p>
+            </Link>
+            <nav className="flex items-center gap-4">
+              <Link
+                href="/reports"
+                className="text-xs text-slate-400 hover:text-white font-medium transition-colors"
+              >
+                Reports
+              </Link>
+              <Link
+                href="/faculty"
+                className="text-xs text-slate-400 hover:text-white font-medium transition-colors"
+              >
+                Faculty Directory
+              </Link>
+              <Link
+                href="/funding"
+                className="text-xs text-slate-400 hover:text-white font-medium transition-colors"
+              >
+                Funding
+              </Link>
+              <p className="hidden sm:block text-xs text-slate-400 font-medium">
+                Find the gap. Fill the gap. Skip the wasted months.
+              </p>
+            </nav>
           </div>
         </header>
 

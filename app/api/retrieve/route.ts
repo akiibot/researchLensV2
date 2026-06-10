@@ -21,6 +21,7 @@ import { searchSemanticScholarBatch } from '@/lib/semanticScholarClient';
 import { searchDataCiteBatch } from '@/lib/dataciteClient';
 import { deduplicatePapers } from '@/lib/deduplicator';
 import { MOCK_PAPERS } from '@/lib/mockData';
+import { hasGeminiCredentials } from '@/lib/geminiClient';
 
 /**
  * Handles POST requests for paper retrieval.
@@ -64,8 +65,7 @@ export async function POST(
     console.log(`[retrieve] Starting retrieval for: "${idea.text.slice(0, 80)}..."`);
 
     // Check for demo/fallback mode
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey || apiKey === 'your_key_here' || apiKey === '') {
+    if (!hasGeminiCredentials()) {
       console.log('[retrieve] No GOOGLE_API_KEY set — returning mock papers');
       const mockQueries = [
         'social media exam anxiety',
@@ -155,7 +155,7 @@ export async function POST(
     // Step 4: Deduplicate
     const deduplicated = deduplicatePapers(allPapers);
     console.log(
-      `[retrieve] Deduplicated: ${allPapers.length} → ${deduplicated.length} papers`
+      `[retrieve] Deduplicated: ${allPapers.length} to ${deduplicated.length} papers`
     );
 
     // Return results

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.108.0",
     "axios": "^1.16.1",
     "cheerio": "^1.2.0",
     "next": "16.2.6",
@@ -25,6 +26,7 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "supabase": "^2.105.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

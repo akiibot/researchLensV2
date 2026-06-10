@@ -186,6 +186,92 @@ export const MOCK_ANALYSIS_RESULT: AnalysisResult = {
     },
   ],
   supervisorNote: 'Dear Advisor, I am formulating my thesis proposal. While many studies link general social media usage to test anxiety, such as Jenkins & Miller (2021) and Rahman & Al-Mansoor (2022), I have identified a key gap: there is almost no research on how this affects students under the unique educational framework of private universities in Bangladesh. I plan to conduct a longitudinal study during the pre-exam period to isolate how platform-specific algorithmic designs (specifically TikTok vs. WhatsApp) contribute to academic procrastination and anxiety. I would appreciate your feedback on this direction.',
+  journalTargeting: {
+    targets: [
+      {
+        outletName: 'Computers in Human Behavior',
+        outletType: 'journal',
+        fitScore: 88,
+        evidenceStrength: 'strong',
+        scopeMatch:
+          'The retrieved corpus includes a close paper on social media addiction, academic performance, and exam anxiety in this venue.',
+        articleTypeFit:
+          'Empirical article fit is plausible for a quantitative or longitudinal study; verify author guidelines before submission.',
+        openAccessStatus: 'unknown',
+        similarAcceptedPapers: [
+          {
+            title:
+              'The impact of social media addiction on academic performance and exam anxiety among college students',
+            year: 2021,
+            doi: '10.1016/j.chb.2021.106894',
+            url: 'https://doi.org/10.1016/j.chb.2021.106894',
+            venue: 'Computers in Human Behavior',
+          },
+        ],
+        citationStyle: 'Not verified',
+        submissionChecklist: ['Not verified - check author guidelines'],
+        verificationUrl: null,
+        metadataNote:
+          'Outlet and similar paper are from retrieved metadata; citation style and checklist were not verified.',
+      },
+      {
+        outletName: 'Current Psychology',
+        outletType: 'journal',
+        fitScore: 80,
+        evidenceStrength: 'strong',
+        scopeMatch:
+          'The retrieved corpus includes a similar cross-sectional mental-health and academic-stress paper in this venue.',
+        articleTypeFit:
+          'Empirical psychology article fit is plausible; verify word limits, reporting standards, and article categories.',
+        openAccessStatus: 'unknown',
+        similarAcceptedPapers: [
+          {
+            title:
+              'Academic stress, social networking sites, and mental health: A cross-sectional survey of university learners',
+            year: 2022,
+            doi: '10.1007/s12144-022-03120-w',
+            url: 'https://doi.org/10.1007/s12144-022-03120-w',
+            venue: 'Current Psychology',
+          },
+        ],
+        citationStyle: 'Not verified',
+        submissionChecklist: ['Not verified - check author guidelines'],
+        verificationUrl: null,
+        metadataNote:
+          'Outlet and similar paper are from retrieved metadata; open access policy and submission rules were not verified.',
+      },
+      {
+        outletName: 'International Journal of Human-Computer Interaction',
+        outletType: 'journal',
+        fitScore: 74,
+        evidenceStrength: 'strong',
+        scopeMatch:
+          'The retrieved corpus includes platform-specific TikTok and cognitive test performance work in this venue.',
+        articleTypeFit:
+          'Empirical human-computer interaction article fit is plausible if the project focuses on platform mechanics and measurable behavior.',
+        openAccessStatus: 'unknown',
+        similarAcceptedPapers: [
+          {
+            title:
+              'Understanding the relationship between TikTok usage patterns and cognitive test performance',
+            year: 2023,
+            doi: '10.1080/10447318.2023.2189090',
+            url: 'https://doi.org/10.1080/10447318.2023.2189090',
+            venue: 'International Journal of Human-Computer Interaction',
+          },
+        ],
+        citationStyle: 'Not verified',
+        submissionChecklist: ['Not verified - check author guidelines'],
+        verificationUrl: null,
+        metadataNote:
+          'Outlet and similar paper are from retrieved metadata; author instructions still need manual verification.',
+      },
+    ],
+    notes: [
+      'Demo targets are grounded in retrieved paper venues.',
+      'Citation style, APCs, deadlines, and submission checklist items require manual verification.',
+    ],
+  },
   totalPapersRetrieved: 47,
   sourceCounts: {
     openalex: 24,

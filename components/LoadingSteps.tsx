@@ -20,6 +20,7 @@ const PIPELINE_STEPS = [
   { id: 'datacite', label: 'Retrieving thesis & dissertation records...' },
   { id: 'dedup', label: 'Deduplicating and ranking by similarity...' },
   { id: 'gap', label: 'Building gap matrix...' },
+  { id: 'faculty', label: 'Finding relevant faculty and researchers...' },
   { id: 'analyze', label: 'Generating evidence-backed pivots...' },
 ];
 
@@ -85,7 +86,7 @@ export default function LoadingSteps() {
 
   return (
     <div className="w-full max-w-lg mx-auto">
-      <div className="glass-card p-6 sm:p-8">
+      <div className="surface-card p-6 sm:p-8">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-3">

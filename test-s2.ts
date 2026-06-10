@@ -12,7 +12,7 @@ try {
       process.env[match[1].trim()] = match[2].trim();
     }
   });
-} catch (e) {
+} catch {
   console.error("Could not load .env.local natively.");
 }
 

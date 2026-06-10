@@ -39,17 +39,20 @@ export default function ResultsPage() {
         return;
       }
 
-      setResult(JSON.parse(storedResult));
-      if (storedQueries) {
-        setQueries(JSON.parse(storedQueries));
-      }
-      if (storedIdea) {
-        setIdea(JSON.parse(storedIdea));
-      }
+      const parsedResult = JSON.parse(storedResult);
+      const parsedQueries = storedQueries ? JSON.parse(storedQueries) : [];
+      const parsedIdea = storedIdea ? JSON.parse(storedIdea) : null;
+
+      queueMicrotask(() => {
+        setResult(parsedResult);
+        setQueries(parsedQueries);
+        if (parsedIdea) {
+          setIdea(parsedIdea);
+        }
+        setIsLoading(false);
+      });
     } catch {
       router.push('/');
-    } finally {
-      setIsLoading(false);
     }
   }, [router]);
 
@@ -94,14 +97,13 @@ export default function ResultsPage() {
       {/* Bangla Translation Notice */}
       {idea?.language === 'bn' && (
         <div className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-slate-300 animate-slide-up flex gap-3 items-start">
-          <span className="text-lg">📢</span>
           <div>
             <p className="text-sm font-semibold text-indigo-300 mb-0.5">Translated from Bangla</p>
             <p className="text-xs text-slate-400">
               Your research idea was detected in Bangla and translated to English for academic database search and analysis.
             </p>
             <div className="mt-2 bg-slate-900/50 rounded-lg p-2.5 border border-slate-800 text-xs italic font-serif">
-              "{idea.text}"
+              &quot;{idea.text}&quot;
             </div>
           </div>
         </div>

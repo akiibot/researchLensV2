@@ -170,11 +170,11 @@ const GEOGRAPHY_INDICATORS: Record<string, string[]> = {
 
 /**
  * Counts how many papers match keywords for a given dimension.
- * Returns a map of category → count of papers mentioning it.
+ * Returns a map of category to count of papers mentioning it.
  *
  * @param papers - Array of papers to classify
  * @param indicators - Keyword dictionary for the dimension
- * @returns Map of category name → paper count
+ * @returns Map of category name to paper count
  */
 function classifyDimension(
   papers: Paper[],
@@ -216,7 +216,7 @@ function getSaturation(
 /**
  * Finds the dominant category and generates an evidence string.
  *
- * @param counts - Map of category → paper count
+ * @param counts - Map of category to paper count
  * @param totalPapers - Total papers analyzed
  * @param dimensionLabel - Human-readable dimension name
  * @returns Object with dominant category name, count, and evidence string
@@ -237,7 +237,6 @@ function findDominant(
   }
 
   // Count papers that didn't match any category
-  const classifiedPapers = new Set<number>();
   // (simplified — use maxCount as dominant)
 
   let evidence: string;

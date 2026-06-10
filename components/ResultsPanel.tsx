@@ -1,43 +1,26 @@
-/**
- * @file ResultsPanel Component
- *
- * Wrapper component that displays the complete analysis results.
- * Composes all result sections in order:
- * 1. Confidence badges
- * 2. Overlap explanation
- * 3. Gap matrix
- * 4. Pivot cards
- * 5. Top related papers
- * 6. Supervisor note
- * 7. Sources searched
- *
- * @component
- */
-
 'use client';
 
 import React, { useState } from 'react';
 import { AnalysisResult } from '@/lib/types';
 import ConfidenceBadge from './ConfidenceBadge';
+import FacultyCard from './FacultyCard';
+import FundingFitPanel from './FundingFitPanel';
 import GapMatrix from './GapMatrix';
-import PivotCard from './PivotCard';
+import JournalTargetingPanel from './JournalTargetingPanel';
 import PaperCard from './PaperCard';
+import PivotCard from './PivotCard';
 
 interface ResultsPanelProps {
   result: AnalysisResult;
   queries?: string[];
 }
 
-/**
- * ResultsPanel renders the full analysis results page with all 7 sections.
- */
 export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showQueries, setShowQueries] = useState(false);
 
-  const basisText = `Based on ${result.totalPapersRetrieved} papers from ${
-    Object.values(result.sourceCounts).filter((c) => c > 0).length
-  } sources`;
+  const sourceCount = Object.values(result.sourceCounts).filter((c) => c > 0).length;
+  const basisText = `Based on ${result.totalPapersRetrieved} papers from ${sourceCount} sources`;
 
   const handleCopy = async () => {
     try {
@@ -45,7 +28,6 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const textarea = document.createElement('textarea');
       textarea.value = result.supervisorNote;
       document.body.appendChild(textarea);
@@ -59,7 +41,6 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Section 1: Confidence Badges */}
       <section>
         <div className="flex flex-col sm:flex-row gap-3">
           <ConfidenceBadge
@@ -83,10 +64,9 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
         </div>
       </section>
 
-      {/* Section 2: Overlap Explanation */}
       <section>
-        <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-          <span className="text-base">📊</span> Overlap Analysis
+        <h3 className="text-sm font-semibold text-text-primary mb-3">
+          Overlap Analysis
         </h3>
         <div className="surface-card p-5">
           <p className="text-sm text-text-secondary leading-relaxed">
@@ -95,19 +75,91 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
         </div>
       </section>
 
-      {/* Section 3: Gap Matrix */}
+      {(result.credibilityReasons || result.modelStatus || result.savedReportId) && (
+        <section>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {result.credibilityReasons && result.credibilityReasons.length > 0 && (
+              <div className="surface-card p-5 md:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-3">
+                  Credibility signals
+                </p>
+                <ul className="space-y-2">
+                  {result.credibilityReasons.map((reason) => (
+                    <li key={reason} className="text-xs text-text-secondary">
+                      {reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="surface-card p-5">
+              <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-3">
+                System status
+              </p>
+              {result.savedReportId && (
+                <p className="text-xs text-status-success mb-2">
+                  Report saved to Supabase.
+                </p>
+              )}
+              {result.modelStatus && (
+                <div className="space-y-1">
+                  <p className="text-xs text-text-secondary">
+                    Reasoning: {result.modelStatus.reasoningModel}
+                  </p>
+                  <p className="text-xs text-text-secondary">
+                    Summary: {result.modelStatus.summaryModel}
+                  </p>
+                  <p className="text-xs text-text-tertiary mt-2">
+                    {result.modelStatus.note}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {(result.studentSummary || result.facultySummary) && (
+        <section>
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            Audience Views
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {result.studentSummary && (
+              <div className="surface-card p-5">
+                <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-2">
+                  Student friendly
+                </p>
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  {result.studentSummary}
+                </p>
+              </div>
+            )}
+            {result.facultySummary && (
+              <div className="surface-card p-5">
+                <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-2">
+                  Faculty friendly
+                </p>
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  {result.facultySummary}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       <section>
-        <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-          <span className="text-base">🔍</span> Four-Dimension Gap Matrix
+        <h3 className="text-sm font-semibold text-text-primary mb-3">
+          Four-Dimension Gap Matrix
         </h3>
         <GapMatrix gaps={result.gapMatrix} />
       </section>
 
-      {/* Section 4: Research Pivots */}
       {result.pivots.length > 0 && (
         <section>
-          <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-            <span className="text-base">💡</span> Evidence-Backed Research Pivots
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            Evidence-Backed Research Pivots
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {result.pivots.map((pivot, i) => (
@@ -117,11 +169,10 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
         </section>
       )}
 
-      {/* Section 5: Top Related Papers */}
       {result.topRelatedPapers.length > 0 && (
         <section>
-          <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-            <span className="text-base">📄</span> Top Related Papers
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            Top Related Papers
           </h3>
           <div className="grid grid-cols-1 gap-3">
             {result.topRelatedPapers.map((paper, i) => (
@@ -131,11 +182,98 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
         </section>
       )}
 
-      {/* Section 6: Supervisor Note */}
+      {result.journalTargeting && (
+        <JournalTargetingPanel journalTargeting={result.journalTargeting} />
+      )}
+
+      {result.fundingFit && <FundingFitPanel fundingFit={result.fundingFit} />}
+
+      {result.facultyMatches && result.facultyMatches.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            Potential Supervisors / Researchers
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {result.facultyMatches.slice(0, 6).map((faculty) => (
+              <FacultyCard
+                key={faculty.openAlexAuthorId || faculty.id}
+                faculty={faculty}
+                reportId={result.savedReportId || null}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {((result.recommendedUseCases && result.recommendedUseCases.length > 0) ||
+        (result.nextActions && result.nextActions.length > 0) ||
+        (result.limitations && result.limitations.length > 0)) && (
+        <section>
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            Use Cases and Next Steps
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {result.recommendedUseCases &&
+              result.recommendedUseCases.length > 0 && (
+                <div className="surface-card p-5">
+                  <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-3">
+                    Use cases
+                  </p>
+                  <div className="space-y-3">
+                    {result.recommendedUseCases.map((useCase) => (
+                      <div key={useCase.title}>
+                        <p className="text-sm font-medium text-text-primary">
+                          {useCase.title}
+                        </p>
+                        <p className="text-xs text-text-secondary mt-1">
+                          {useCase.description}
+                        </p>
+                        <p className="text-xs text-accent-text mt-1">
+                          {useCase.suggestedAction}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {result.nextActions && result.nextActions.length > 0 && (
+              <div className="surface-card p-5">
+                <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-3">
+                  Next actions
+                </p>
+                <ul className="space-y-2">
+                  {result.nextActions.map((action) => (
+                    <li key={action} className="text-xs text-text-secondary">
+                      {action}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {result.limitations && result.limitations.length > 0 && (
+              <div className="surface-card p-5">
+                <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-3">
+                  Limitations
+                </p>
+                <ul className="space-y-2">
+                  {result.limitations.map((limitation) => (
+                    <li key={limitation} className="text-xs text-text-secondary">
+                      {limitation}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {result.supervisorNote && (
         <section>
-          <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-            <span className="text-base">📋</span> Supervisor-Ready Note
+          <h3 className="text-sm font-semibold text-text-primary mb-3">
+            Supervisor-Ready Note
           </h3>
           <div className="surface-card p-5">
             <div className="flex items-start justify-between gap-4 mb-3">
@@ -144,28 +282,9 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
               </p>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-subtle text-xs font-medium text-accent-base hover:bg-bg-tertiary transition-all cursor-pointer whitespace-nowrap min-h-[44px]"
+                className="px-3 py-1.5 rounded-lg bg-bg-secondary border border-border-subtle text-xs font-medium text-accent-base hover:bg-bg-tertiary transition-all cursor-pointer whitespace-nowrap min-h-[44px]"
               >
-                {copied ? (
-                  <>
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                    </svg>
-                    Copy to clipboard
-                  </>
-                )}
+                {copied ? 'Copied' : 'Copy to clipboard'}
               </button>
             </div>
             <div className="bg-bg-secondary rounded-lg p-4 border border-border-subtle">
@@ -177,10 +296,9 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
         </section>
       )}
 
-      {/* Section 7: Sources Searched */}
       <section>
-        <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-          <span className="text-base">🔗</span> Sources Searched
+        <h3 className="text-sm font-semibold text-text-primary mb-3">
+          Sources Searched
         </h3>
         <div className="surface-card p-5">
           <div className="flex flex-wrap gap-4 mb-4">
@@ -209,7 +327,6 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
             </div>
           </div>
 
-          {/* Queries used */}
           {queries && queries.length > 0 && (
             <div>
               <button
@@ -233,11 +350,10 @@ export default function ResultsPanel({ result, queries }: ResultsPanelProps) {
             </div>
           )}
 
-          {/* Coverage disclaimer */}
           <p className="text-xs text-text-tertiary mt-4 pt-3 border-t border-border-subtle">
             ResearchLens estimates novelty risk using open academic APIs. It does
-            not claim 100% global coverage. Use results as a starting point for
-            further investigation.
+            not claim complete global coverage. Use results as a starting point
+            for further investigation.
           </p>
         </div>
       </section>

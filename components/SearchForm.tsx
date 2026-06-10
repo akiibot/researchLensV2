@@ -1,22 +1,8 @@
-/**
- * @file SearchForm Component
- *
- * The main input form for ResearchLens. Allows the student to:
- * - Describe their research idea in a textarea (max 500 chars)
- * - Select their academic field
- * - Select their academic level (Undergraduate/Master's/PhD)
- * - Toggle language (English/Bangla)
- *
- * Includes character count, validation, and clickable example idea chips.
- *
- * @component
- */
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { AppMode } from '@/lib/types';
 
-/** Academic field options */
 const FIELDS = [
   'Education',
   'Social Sciences',
@@ -29,46 +15,39 @@ const FIELDS = [
   'Other',
 ];
 
-/** Academic level options with labels */
 const LEVELS = [
   { value: 'undergraduate' as const, label: 'Undergraduate' },
   { value: 'masters' as const, label: "Master's" },
   { value: 'phd' as const, label: 'PhD' },
 ];
 
-/** Example ideas as clickable chips */
 const EXAMPLES = [
   'Social media use and exam anxiety in university students',
   'Remote work and employee productivity post-pandemic',
   'Machine learning in early disease detection',
 ];
 
-/** Props for the SearchForm component */
 interface SearchFormProps {
-  /** Called when the form is submitted with a valid research idea */
   onSubmit: (data: {
     text: string;
     field: string;
     level: 'undergraduate' | 'masters' | 'phd';
     language: 'en' | 'bn';
+    mode: AppMode;
   }) => void;
-  /** Whether the form is currently submitting */
   isLoading: boolean;
-  /** Optional pre-filled idea text (for "Refine Your Idea" flow) */
   initialIdea?: string;
+  mode: AppMode;
 }
 
 const MAX_CHARS = 500;
 const MIN_CHARS = 20;
 
-/**
- * SearchForm renders the research idea input form with full validation,
- * field/level selectors, language toggle, and example idea chips.
- */
 export default function SearchForm({
   onSubmit,
   isLoading,
   initialIdea,
+  mode,
 }: SearchFormProps) {
   const [text, setText] = useState(initialIdea || '');
   const [field, setField] = useState('');
@@ -79,39 +58,51 @@ export default function SearchForm({
 
   useEffect(() => {
     if (initialIdea) {
-      setText(initialIdea);
+      queueMicrotask(() => setText(initialIdea));
     }
   }, [initialIdea]);
 
   const charCount = text.length;
   const isValid = charCount >= MIN_CHARS && charCount <= MAX_CHARS && field !== '';
 
+  const title = mode === 'faculty' ? 'Faculty Search Topic' : 'Your Research Idea';
+  const helper =
+    mode === 'faculty'
+      ? 'Describe the topic, method, population, or subject area you want to review.'
+      : 'Describe the thesis idea you want to validate and find potential supervisors for.';
+  const placeholderText =
+    language === 'bn'
+      ? 'Apnar research idea ba topic likhun...'
+      : mode === 'faculty'
+        ? 'For example: AI tools for formative assessment in higher education'
+        : 'For example: I want to study how social media usage affects exam anxiety among university students in Bangladesh';
+  const submitLabel =
+    mode === 'faculty' ? 'Review Topic and Researchers' : 'Analyze Gap and Find Supervisors';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid || isLoading) return;
-    onSubmit({ text, field, level, language });
+    onSubmit({ text, field, level, language, mode });
   };
-
-  const handleExampleClick = (example: string) => {
-    setText(example);
-    setLanguage('en');
-  };
-
-  const placeholderText =
-    language === 'bn'
-      ? 'আপনার গবেষণার ধারণা বর্ণনা করুন...'
-      : 'Describe your research idea in a few sentences. For example: "I want to study how social media usage affects exam anxiety among university students in Bangladesh"';
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
       <div className="surface-card p-6 sm:p-8 space-y-6">
-        {/* Textarea */}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-accent-base/10 border border-accent-base/20 text-xs font-medium text-accent-text">
+              {mode === 'faculty' ? 'Faculty workflow' : 'Student workflow'}
+            </div>
+            <p className="text-xs text-text-tertiary mt-2">{helper}</p>
+          </div>
+        </div>
+
         <div>
           <label
             htmlFor="research-idea"
             className="block text-sm font-medium text-text-secondary mb-2"
           >
-            Your Research Idea
+            {title}
           </label>
           <textarea
             id="research-idea"
@@ -142,7 +133,6 @@ export default function SearchForm({
           </div>
         </div>
 
-        {/* Example chips */}
         <div>
           <p className="text-xs text-text-tertiary mb-2">Try an example:</p>
           <div className="flex flex-wrap gap-2">
@@ -150,7 +140,10 @@ export default function SearchForm({
               <button
                 key={example}
                 type="button"
-                onClick={() => handleExampleClick(example)}
+                onClick={() => {
+                  setText(example);
+                  setLanguage('en');
+                }}
                 disabled={isLoading}
                 className="text-xs px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-full border border-border-subtle bg-bg-secondary text-text-secondary hover:text-accent-hover hover:border-accent-base/30 hover:bg-accent-base/5 transition-all disabled:opacity-50 cursor-pointer"
               >
@@ -160,9 +153,7 @@ export default function SearchForm({
           </div>
         </div>
 
-        {/* Field & Level Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Field selector */}
           <div>
             <label
               htmlFor="field-select"
@@ -188,7 +179,6 @@ export default function SearchForm({
             </select>
           </div>
 
-          {/* Level selector */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
               Academic Level
@@ -214,7 +204,6 @@ export default function SearchForm({
           </div>
         </div>
 
-        {/* Language toggle */}
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium text-text-secondary">
             Input Language
@@ -244,12 +233,11 @@ export default function SearchForm({
                   : 'text-text-secondary hover:text-text-primary'
               }`}
             >
-              বাংলা
+              Bangla
             </button>
           </div>
         </div>
 
-        {/* Submit button */}
         <button
           type="submit"
           disabled={!isValid || isLoading}
@@ -259,28 +247,7 @@ export default function SearchForm({
               : 'bg-bg-tertiary text-text-tertiary cursor-not-allowed'
           }`}
         >
-          {isLoading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg
-                className="animate-spin-slow h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeDasharray="32"
-                  strokeLinecap="round"
-                />
-              </svg>
-              Analyzing...
-            </span>
-          ) : (
-            'Analyze Research Gap →'
-          )}
+          {isLoading ? 'Analyzing...' : submitLabel}
         </button>
       </div>
     </form>

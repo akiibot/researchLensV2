@@ -16,7 +16,10 @@ export interface ResearchIdea {
   field: string;
   level: 'undergraduate' | 'masters' | 'phd';
   language: 'en' | 'bn';
+  mode?: AppMode;
 }
+
+export type AppMode = 'student' | 'faculty';
 
 /**
  * Represents a single academic paper retrieved from an external API.
@@ -84,6 +87,98 @@ export interface Pivot {
   targetGap: 'topic' | 'method' | 'population' | 'geography';
 }
 
+export interface FacultyProfile {
+  id: string;
+  openAlexAuthorId: string;
+  name: string;
+  displayNameAlternatives?: string[];
+  institution: string | null;
+  country: string | null;
+  orcid: string | null;
+  worksCount: number;
+  citedByCount: number;
+  hIndex: number | null;
+  topics: string[];
+  profileUrl: string | null;
+  worksApiUrl: string | null;
+  relevanceScore?: number;
+  evidencePapers?: string[];
+  fitSummary?: string;
+  outreachDraft?: string;
+  matchReasons?: string[];
+  source?: 'openalex' | 'supabase';
+}
+
+export interface UseCaseScenario {
+  title: string;
+  audience: AppMode | 'both';
+  description: string;
+  suggestedAction: string;
+}
+
+export interface FundingFit {
+  readiness: 'high' | 'medium' | 'low';
+  score: number;
+  bestAngles: string[];
+  funderCategories: string[];
+  searchLinks?: {
+    label: string;
+    url: string;
+    purpose: string;
+  }[];
+  internalRoutes?: {
+    label: string;
+    href: string;
+    purpose: string;
+  }[];
+  connectorSuggestions?: {
+    name: string;
+    type: 'grant_database' | 'university' | 'foundation' | 'government' | 'research_index';
+    purpose: string;
+    status: 'available_now' | 'future_integration';
+  }[];
+  grantReadyFraming: string;
+  weaknesses: string[];
+  collaboratorProfiles: string[];
+  outreachDrafts?: {
+    title: string;
+    recipientType: 'funding_office' | 'potential_collaborator' | 'supervisor' | 'program_officer';
+    body: string;
+  }[];
+  miniGrantAbstract: string;
+  specificAims: string[];
+  impactStatement: string;
+  budgetScale: 'small_internal' | 'external_seed' | 'major_grant';
+}
+
+export interface JournalTargetPaper {
+  title: string;
+  year: number;
+  doi: string | null;
+  url: string | null;
+  venue: string | null;
+}
+
+export interface JournalTarget {
+  outletName: string;
+  outletType: 'journal' | 'conference' | 'unknown';
+  fitScore: number;
+  evidenceStrength: 'strong' | 'moderate' | 'weak';
+  scopeMatch: string;
+  articleTypeFit: string;
+  openAccessStatus: 'open' | 'hybrid' | 'closed' | 'unknown';
+  similarAcceptedPapers: JournalTargetPaper[];
+  citationStyle: string;
+  submissionChecklist: string[];
+  verificationUrl: string | null;
+  metadataNote: string;
+}
+
+export interface JournalTargeting {
+  targets: JournalTarget[];
+  notes: string[];
+}
+
 /**
  * The complete analysis result returned by the /api/analyze endpoint.
  * Combines pre-computed gap matrix data with LLM-generated insights.
@@ -105,12 +200,43 @@ export interface AnalysisResult {
   evidenceConfidence: 'high' | 'medium' | 'low';
   noveltySignal: 'strong' | 'moderate' | 'weak';
   overlapExplanation: string;
+  studentSummary?: string;
+  facultySummary?: string;
+  recommendedUseCases?: UseCaseScenario[];
+  limitations?: string[];
+  nextActions?: string[];
+  fundingFit?: FundingFit;
+  journalTargeting?: JournalTargeting;
   topRelatedPapers: Paper[];
   gapMatrix: GapDimension[];
   pivots: Pivot[];
   supervisorNote: string;
+  facultyMatches?: FacultyProfile[];
+  credibilityReasons?: string[];
+  modelStatus?: {
+    reasoningModel: string;
+    summaryModel: string;
+    note: string;
+  };
+  savedReportId?: string;
   totalPapersRetrieved: number;
   sourceCounts: Record<string, number>;
+}
+
+export interface SavedReport {
+  id: string;
+  idea: ResearchIdea;
+  result: AnalysisResult;
+  queries: string[];
+  createdAt: string;
+}
+
+export interface FacultyShortlistItem {
+  id: string;
+  faculty: FacultyProfile;
+  reportId: string | null;
+  note: string | null;
+  createdAt: string;
 }
 
 /**
@@ -133,6 +259,7 @@ export interface AnalyzeRequest {
   idea: ResearchIdea;
   papers: Paper[];
   gapMatrix: GapDimension[];
+  facultyMatches?: FacultyProfile[];
 }
 
 /**

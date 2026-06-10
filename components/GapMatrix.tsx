@@ -4,7 +4,7 @@
  * Displays the four-dimension gap matrix as a visual 2×2 grid.
  * - Crowded: red/orange gradient background
  * - Moderate: amber/yellow background
- * - Open: green background with "← GAP" indicator
+ * - Open: green background with "GAP" indicator
  * Clicking a cell expands the evidence detail.
  *
  * @component
@@ -24,10 +24,10 @@ const DIMENSION_CONFIG: Record<
   string,
   { icon: string; label: string; color: string }
 > = {
-  topic: { icon: '📚', label: 'Topic', color: 'indigo' },
-  method: { icon: '🔬', label: 'Method', color: 'purple' },
-  population: { icon: '👥', label: 'Population', color: 'teal' },
-  geography: { icon: '🌍', label: 'Geography', color: 'orange' },
+  topic: { icon: 'T', label: 'Topic', color: 'indigo' },
+  method: { icon: 'M', label: 'Method', color: 'purple' },
+  population: { icon: 'P', label: 'Population', color: 'teal' },
+  geography: { icon: 'G', label: 'Geography', color: 'orange' },
 };
 
 /** Saturation color config */
@@ -79,7 +79,7 @@ export default function GapMatrix({ gaps }: GapMatrixProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {gaps.map((gap) => {
         const config = DIMENSION_CONFIG[gap.dimension] || {
-          icon: '📊',
+          icon: 'A',
           label: gap.dimension,
           color: 'slate',
         };
@@ -111,7 +111,7 @@ export default function GapMatrix({ gaps }: GapMatrixProps) {
                 </span>
                 {gap.saturation === 'open' && (
                   <span className="text-xs text-status-success font-medium">
-                    ← GAP
+                    GAP
                   </span>
                 )}
               </div>

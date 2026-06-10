@@ -5,7 +5,7 @@
  * - Title (bold), Authors (truncated), Year, Venue
  * - Similarity label with color
  * - Abstract preview (expandable)
- * - DOI link: "Open Paper →"
+ * - DOI link: "Open Paper"
  * - Source badge
  *
  * @component
@@ -144,7 +144,7 @@ export default function PaperCard({ paper, rank }: PaperCardProps) {
           aria-label={`Open paper: ${paper.title} in a new tab`}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-base hover:text-accent-hover transition-colors min-h-[44px]"
         >
-          Open Paper →
+          Open Paper
           <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
             <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
             <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />

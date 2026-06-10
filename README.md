@@ -1,116 +1,96 @@
-# ResearchLens 🔍
+# ResearchLens
 
-ResearchLens is an AI-powered research gap finder designed for undergraduate and graduate thesis students. It helps students explore, refine, and validate their research ideas by scanning real academic literature to identify overlap risk, construct a 4D gap matrix, and suggest evidence-backed research pivots.
+ResearchLens is a Next.js research-gap assistant for thesis students and supervisors. It searches open scholarly metadata, ranks related papers, identifies gap dimensions, suggests pivots, and recommends relevant faculty/researchers.
 
-ResearchLens is built as a Next.js 14 web application using TypeScript and Vanilla CSS. It connects to multiple academic databases, performs similarity ranking, and analyzes potential gaps.
+## Current Capabilities
 
----
+- Student Mode: thesis idea validation, overlap risk, gap matrix, potential supervisor/researcher discovery, outreach drafts, and student-friendly next steps.
+- Faculty Mode: topic review, evidence quality checks, faculty-friendly summaries, and related researcher/collaborator discovery.
+- Grant / Funding Fit: fundability score, funding angles, funder categories, search links, internal routes, connector suggestions, outreach drafts, collaborator profiles, specific aims, impact statement, and mini grant abstract.
+- Gemini model routing:
+  - reasoning/gap finding: `GEMINI_REASONING_MODEL` with fallback
+  - summaries, translation, and query expansion: Flash-class models
+- Scholarly retrieval from OpenAlex, Semantic Scholar, and DataCite.
+- Faculty directory powered by OpenAlex author metadata and optional Supabase persistence.
+- Supabase migration for a public-read, server-write faculty database.
 
-## 🌟 Key Features
+## Stack
 
-- **Multi-Source Parallel Retrieval**: Queries OpenAlex, Semantic Scholar, and DataCite in parallel to collect a comprehensive corpus of related papers.
-- **Robust Deduplication**: Deduplicates retrieved papers by matching normalized DOIs and title Jaccard similarity.
-- **TF-IDF & Cosine Similarity Ranking**: Computes term-frequency/inverse-document-frequency vectors client-side to rank papers by semantic relevance.
-- **4D Gap Matrix Classifier**: Classifies papers across four dimensions (**Topic**, **Method**, **Population**, and **Geography**) and computes saturation level (Crowded, Moderate, or Open).
-- **Bangla Language Support**: Auto-detects input language, translates Bangla research ideas to English using Claude, and displays a translation notice banner in the results.
-- **Grounded LLM Analysis**: Calls Claude 3.5 Sonnet to perform a detailed overlap risk assessment, generate three distinct pivots across different gap dimensions, and write a supervisor-ready email draft.
-- **Polite API Client Integration**: Connects politely to public APIs (includes contact details, batch sequence delays, and exponential backoff retry logic).
-- **Interactive UI**: A sleek glassmorphism dashboard featuring color-coded badges, copy-to-clipboard functionality, and expandable details.
-- **Demo Mode**: Works instantly without Anthropic API keys by serving realistic mock search results and analysis for testing.
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Gemini / Vertex AI
+- OpenAlex, Semantic Scholar, DataCite
+- Supabase
+- Tailwind CSS 4
 
----
+## Setup
 
-## 🛠️ Tech Stack
-
-- **Core**: Next.js 14 (App Router), React, TypeScript
-- **Styling**: Vanilla CSS (Premium glassmorphic dashboard, slate dark-theme aesthetics)
-- **API Clients**: Axios (with custom retry and backoff logic), Cheerio (for HTML stripping)
-- **AI/LLM**: Anthropic TypeScript SDK
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-Make sure you have [Node.js](https://nodejs.org) (v18+ recommended) installed.
-
-### Setup Instructions
-
-1. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Configure Environment Variables**:
-   Copy the example environment file:
-   ```bash
-   cp .env.local.example .env.local
-   ```
-   Open `.env.local` and configure your API keys (optional):
-   ```env
-   ANTHROPIC_API_KEY=your_key_here
-   SEMANTIC_SCHOLAR_API_KEY=optional
-   OPENALEX_EMAIL=your-email@example.com
-   ```
-   *Note: If `ANTHROPIC_API_KEY` is left as `"your_key_here"` or blank, the app will run in **Demo Mode** using realistic pre-baked papers and analysis results for "Social media and exam anxiety in university students".*
-
-3. **Run the Development Server**:
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
-
-4. **Verify the Production Build**:
-   ```bash
-   npm run build
-   ```
-
----
-
-## 📁 Project Structure
-
-```text
-researchlens/
-├── app/                     # Next.js App Router
-│   ├── api/                 # API Routes
-│   │   ├── analyze/         # Calls Claude for gap analysis / pivot generation
-│   │   └── retrieve/        # Queries OpenAlex, Semantic Scholar, DataCite
-│   ├── results/             # Analysis report presentation page
-│   ├── globals.css          # Core CSS, theme variables, glassmorphic styles
-│   ├── layout.tsx           # Global layout, header, footer, SEO metadata
-│   └── page.tsx             # Home / landing page and loading state coordinator
-├── components/              # React Components
-│   ├── ConfidenceBadge.tsx  # Overlap risk, evidence confidence, and novelty indicators
-│   ├── GapMatrix.tsx        # Grid for Topic, Method, Population, Geography gaps
-│   ├── LoadingSteps.tsx     # 7-step stagger loading animation during search
-│   ├── PaperCard.tsx        # Display card for a cited academic paper
-│   ├── PivotCard.tsx        # Detailed pivot recommendation card
-│   ├── ResultsPanel.tsx     # Main wrapper dashboard compiling all results sections
-│   └── SearchForm.tsx       # Textarea, field/level select, language switch, and examples
-├── lib/                     # Library & Utility functions
-│   ├── crossrefClient.ts    # Crossref API client for DOI lookup & verification
-│   ├── dataciteClient.ts    # DataCite API client for thesis and dissertation records
-│   ├── deduplicator.ts      # Normalizes DOIs and computes title Jaccard similarity
-│   ├── embedder.ts          # TF-IDF cosine similarity paper ranker
-│   ├── gapAnalyzer.ts       # 4D keyword-based gap matrix classifier
-│   ├── mockData.ts          # Full mock papers and analysis for demo mode
-│   ├── openalexClient.ts    # OpenAlex API client with abstract reconstruction
-│   ├── queryExpansion.ts    # Query generator with synonyms and Bangla translation
-│   ├── retry.ts             # Exponential backoff and jitter retry utility
-│   ├── semanticScholarClient.ts # Semantic Scholar API client
-│   └── types.ts             # TypeScript interfaces for request/response payloads
-└── README.md                # Project documentation
+```bash
+npm install
+cp .env.local.example .env.local
+npm run dev
 ```
 
----
+Open `http://localhost:3000`.
 
-## 🔬 How the Pipeline Works
+## Environment
 
-1. **Query Expansion**: The user's input is cleaned, and keywords are extracted. Synonym-rich variants (5–8 unique queries) are created to maximize database coverage. If input is in Bangla, it is translated into English first.
-2. **Parallel Fetching**: The queries are sent to OpenAlex, Semantic Scholar, and DataCite in parallel. API requests are throttled and wrapped in retry logic.
-3. **Deduplication**: Papers are merged using DOIs and a title Jaccard similarity index to remove duplicate publications across databases.
-4. **TF-IDF & Cosine Similarity**: A client-side term-frequency matrix ranks the deduplicated papers based on their closeness to the student's original idea.
-5. **Matrix Classification**: The ranked corpus is scanned against dictionaries for Method, Population, Geography, and Topic to evaluate which segments are over-saturated (crowded) or under-researched (gaps).
-6. **Claude Grounded Analysis**: The top-ranked papers, idea, and gap matrix are sent to Claude. The model evaluates overlap risk, drafts exactly three concrete, different-dimensional pivots, and formats a supervisor note citing real DOIs.
-7. **Interactive Dashboard**: The frontend parses the output into a cohesive, interactive workspace.
+Use either a Gemini API key or Vertex AI service-account credentials. The current implementation supports service-account auth through:
+
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\service-account.json
+GOOGLE_CLOUD_PROJECT=your-google-cloud-project
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+Model routing:
+
+```env
+GEMINI_REASONING_MODEL=gemini-3.1-pro-preview
+GEMINI_REASONING_FALLBACK_MODEL=gemini-2.5-pro
+GEMINI_SUMMARY_MODEL=gemini-2.5-flash
+GEMINI_TRANSLATION_MODEL=gemini-2.5-flash
+GEMINI_QUERY_MODEL=gemini-2.5-flash
+```
+
+Scholarly APIs:
+
+```env
+OPENALEX_EMAIL=your-email@example.com
+SEMANTIC_SCHOLAR_API_KEY=optional
+```
+
+Supabase faculty directory:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+Apply the migration in `supabase/migrations/001_faculty_directory.sql` to create:
+
+- `faculty_profiles`
+- `faculty_topic_scores`
+- `faculty_outreach_drafts`
+
+If Supabase is not configured, the app still runs. Faculty discovery returns live matches for reports, but `/faculty` will show an empty unconfigured state.
+
+## Pipeline
+
+1. User chooses Student Mode or Faculty Mode and submits an idea or topic.
+2. `/api/retrieve` expands queries and searches scholarly APIs.
+3. Client ranks papers with TF-IDF and computes the 4D gap matrix.
+4. `/api/faculty/search` discovers and enriches relevant OpenAlex authors, then persists them to Supabase if configured.
+5. `/api/analyze` uses Gemini reasoning to generate student and faculty summaries, pivots, use cases, limitations, next actions, and supervisor note.
+6. `/results` displays the report from session storage.
+7. `/faculty` browses persisted faculty profiles.
+
+## Verification
+
+```bash
+npm run build
+```
+
+The faculty directory requires Supabase env vars and the migration to be applied before it can persist data.
