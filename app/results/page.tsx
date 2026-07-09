@@ -15,7 +15,14 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ResultsPanel from '@/components/ResultsPanel';
-import { AnalysisResult, ResearchIdea } from '@/lib/types';
+import {
+  AnalysisResult,
+  Pivot,
+  PivotExplorationContext,
+  ResearchIdea,
+  ThesisMindmapBranch,
+  ThesisMindmapNode,
+} from '@/lib/types';
 
 /**
  * ResultsPage renders the full analysis results display.
@@ -60,12 +67,75 @@ export default function ResultsPage() {
     router.push('/?refine=true');
   };
 
+  const handleExplorePivot = (pivot: Pivot) => {
+    if (!idea) return;
+
+    const pivotIdea = `${pivot.title}: ${pivot.description}`;
+    const pivotContext: PivotExplorationContext = {
+      pivotTitle: pivot.title,
+      targetGap: pivot.targetGap,
+      previousIdeaText: idea.text,
+    };
+
+    sessionStorage.setItem('researchlens_idea', pivotIdea);
+    sessionStorage.setItem(
+      'researchlens_idea_data',
+      JSON.stringify({
+        ...idea,
+        text: pivotIdea,
+      })
+    );
+    sessionStorage.setItem(
+      'researchlens_pivot_context',
+      JSON.stringify(pivotContext)
+    );
+
+    router.push('/?refine=true&fromPivot=true');
+  };
+
+  const handleExploreMindmapNode = (
+    node: ThesisMindmapNode,
+    branch: ThesisMindmapBranch
+  ) => {
+    if (!idea) return;
+
+    const targetGap =
+      branch.kind === 'topic' ||
+      branch.kind === 'method' ||
+      branch.kind === 'population' ||
+      branch.kind === 'geography'
+        ? branch.kind
+        : 'topic';
+    const cardIdea = `${node.label}: ${node.description}`;
+    const pivotContext: PivotExplorationContext = {
+      pivotTitle: node.label,
+      targetGap,
+      previousIdeaText: idea.text,
+    };
+
+    sessionStorage.setItem('researchlens_idea', cardIdea);
+    sessionStorage.setItem(
+      'researchlens_idea_data',
+      JSON.stringify({
+        ...idea,
+        text: cardIdea,
+        evidenceScope: 'balanced',
+      })
+    );
+    sessionStorage.setItem(
+      'researchlens_pivot_context',
+      JSON.stringify(pivotContext)
+    );
+
+    router.push('/?refine=true&fromPivot=true');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-slate-400">Loading results...</p>
+          <div className="w-8 h-8 border-2 border-accent-base border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-text-tertiary">Loading results...</p>
         </div>
       </div>
     );
@@ -76,19 +146,19 @@ export default function ResultsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Page header */}
       <div className="mb-8 animate-fade-in">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-xs text-emerald-400 font-medium uppercase tracking-wide">
+          <div className="w-2 h-2 rounded-full bg-status-success" />
+          <span className="text-xs text-status-success font-medium uppercase tracking-wide">
             Analysis Complete
           </span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+        <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-2">
           Your Research Gap Report
         </h2>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-text-tertiary">
           Based on {result.totalPapersRetrieved} real papers from{' '}
           {Object.values(result.sourceCounts).filter((c) => c > 0).length} academic sources
         </p>
@@ -96,13 +166,13 @@ export default function ResultsPage() {
 
       {/* Bangla Translation Notice */}
       {idea?.language === 'bn' && (
-        <div className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-slate-300 animate-slide-up flex gap-3 items-start">
+        <div className="mb-6 p-4 rounded-xl bg-accent-base/10 border border-accent-base/20 text-text-secondary animate-slide-up flex gap-3 items-start">
           <div>
-            <p className="text-sm font-semibold text-indigo-300 mb-0.5">Translated from Bangla</p>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm font-semibold text-accent-text mb-0.5">Translated from Bangla</p>
+            <p className="text-xs text-text-tertiary">
               Your research idea was detected in Bangla and translated to English for academic database search and analysis.
             </p>
-            <div className="mt-2 bg-slate-900/50 rounded-lg p-2.5 border border-slate-800 text-xs italic font-serif">
+            <div className="mt-2 bg-bg-secondary rounded-lg p-2.5 border border-border-subtle text-xs italic font-serif">
               &quot;{idea.text}&quot;
             </div>
           </div>
@@ -110,13 +180,18 @@ export default function ResultsPage() {
       )}
 
       {/* Results panel */}
-      <ResultsPanel result={result} queries={queries} />
+      <ResultsPanel
+        result={result}
+        queries={queries}
+        onExplorePivot={idea ? handleExplorePivot : undefined}
+        onExploreMindmapNode={idea ? handleExploreMindmapNode : undefined}
+      />
 
       {/* Refine button */}
       <div className="mt-10 text-center animate-fade-in">
         <button
           onClick={handleRefine}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm font-medium text-slate-300 hover:text-white hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-bg-secondary border border-border-subtle text-sm font-medium text-text-secondary hover:text-text-primary hover:border-accent-base/40 hover:bg-accent-base/10 transition-all cursor-pointer token-focus"
         >
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
             <path

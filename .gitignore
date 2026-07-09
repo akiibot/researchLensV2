@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+docs/personal-*.md
+docs/algorithm-learning-roadmap.md
 
 # debug
 npm-debug.log*

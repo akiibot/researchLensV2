@@ -64,6 +64,15 @@ export function reconstructAbstract(
   }
 }
 
+export function normalizeOpenAlexWorkId(
+  id: string | null | undefined
+): string | undefined {
+  if (!id || typeof id !== 'string') return undefined;
+  const trimmed = id.trim();
+  const match = trimmed.match(/(W\d+)$/i);
+  return match ? match[1] : trimmed;
+}
+
 /**
  * Delays execution for the specified number of milliseconds.
  * Used to respect API rate limits.
@@ -148,6 +157,22 @@ export async function searchOpenAlex(query: string): Promise<Paper[]> {
           type: work.type || 'unknown',
           venue:
             work.primary_location?.source?.display_name || null,
+          openAlexId: normalizeOpenAlexWorkId(work.id),
+          externalIds: {
+            doi: doi || undefined,
+            openalex: work.id || undefined,
+          },
+          referencedWorkIds: Array.isArray(work.referenced_works)
+            ? (work.referenced_works
+                .map((id: string) => normalizeOpenAlexWorkId(id))
+                .filter(Boolean) as string[])
+            : undefined,
+          relatedWorkIds: Array.isArray(work.related_works)
+            ? (work.related_works
+                .map((id: string) => normalizeOpenAlexWorkId(id))
+                .filter(Boolean) as string[])
+            : undefined,
+          citedByApiUrl: work.cited_by_api_url || undefined,
         });
       } catch (parseError) {
         // Skip individual papers that fail to parse

@@ -6,14 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "eval:retrieval": "tsx scripts/evaluate-retrieval.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.108.0",
+    "@xyflow/react": "^12.11.1",
     "axios": "^1.16.1",
     "cheerio": "^1.2.0",
     "next": "16.2.6",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "uuid": "^14.0.0"
@@ -28,6 +31,7 @@
     "eslint-config-next": "16.2.6",
     "supabase": "^2.105.0",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }

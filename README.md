@@ -87,6 +87,16 @@ If Supabase is not configured, the app still runs. Faculty discovery returns liv
 6. `/results` displays the report from session storage.
 7. `/faculty` browses persisted faculty profiles.
 
+## Product Bucket List
+
+- Recursive Research Map: visualize the original idea and explored pivots as a branching topic tree.
+- Novelty Score Evolution: compare overlap risk, evidence confidence, and gap signals across recursive pivots.
+- Supervisor Fit Timeline: show how supervisor/researcher matches change as a topic is refined.
+- Make It Thesis-Ready Mode: turn a promising pivot into a title, problem statement, research questions, objectives, method sketch, contribution, limitations, and supervisor email.
+- Journal / Funding Fit Mode: deepen journal targeting, open-access verification, funder fit, grant framing, and collaborator discovery.
+- Evidence Notebook: convert retrieved papers into structured notes covering topic, method, population, geography, limitations, and relevance to the idea.
+- Red Team Review: critique a topic like a strict reviewer and suggest concrete repairs for scope, novelty, method, population, and feasibility.
+
 ## Verification
 
 ```bash

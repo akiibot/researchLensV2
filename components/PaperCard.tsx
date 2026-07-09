@@ -15,6 +15,7 @@
 
 import React, { useState } from 'react';
 import { Paper } from '@/lib/types';
+import { accessLabel, accessTone, canReadPaper } from '@/lib/paperAccessLabels';
 
 interface PaperCardProps {
   paper: Paper;
@@ -27,6 +28,10 @@ const SOURCE_COLORS: Record<string, { bg: string; text: string }> = {
   semanticscholar: { bg: 'bg-bg-secondary', text: 'text-text-secondary' },
   datacite: { bg: 'bg-bg-secondary', text: 'text-text-secondary' },
   crossref: { bg: 'bg-bg-secondary', text: 'text-text-secondary' },
+  arxiv: { bg: 'bg-bg-secondary', text: 'text-text-secondary' },
+  europepmc: { bg: 'bg-bg-secondary', text: 'text-text-secondary' },
+  core: { bg: 'bg-bg-secondary', text: 'text-text-secondary' },
+  pubmed: { bg: 'bg-bg-secondary', text: 'text-text-secondary' },
 };
 
 /** Source display names */
@@ -35,6 +40,10 @@ const SOURCE_NAMES: Record<string, string> = {
   semanticscholar: 'Semantic Scholar',
   datacite: 'DataCite',
   crossref: 'Crossref',
+  arxiv: 'arXiv',
+  europepmc: 'Europe PMC',
+  core: 'CORE',
+  pubmed: 'PubMed',
 };
 
 /**
@@ -61,9 +70,45 @@ function getSimilarityDisplay(score?: number): {
  */
 export default function PaperCard({ paper, rank }: PaperCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [readerStatus, setReaderStatus] = useState<string>('');
   const similarity = getSimilarityDisplay(paper.similarityScore);
   const sourceStyle = SOURCE_COLORS[paper.source] || SOURCE_COLORS.openalex;
   const sourceName = SOURCE_NAMES[paper.source] || paper.source;
+  const readable = canReadPaper(paper);
+  const openUrl = paper.landingUrl || paper.url || (paper.doi ? `https://doi.org/${paper.doi}` : null);
+
+  const downloadPdf = async () => {
+    setReaderStatus('Preparing PDF...');
+    const response = await fetch('/api/papers/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paper }),
+    });
+    if (!response.ok) {
+      setReaderStatus('PDF unavailable');
+      return;
+    }
+    const blob = await response.blob();
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = `${paper.title.replace(/[^\w\s.-]/g, '').slice(0, 90) || 'paper'}.pdf`;
+    link.click();
+    URL.revokeObjectURL(href);
+    setReaderStatus('PDF downloaded');
+  };
+
+  const readInResearchLens = async () => {
+    setReaderStatus('Reading PDF...');
+    const response = await fetch('/api/papers/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paper }),
+    });
+    const result = await response.json();
+    sessionStorage.setItem('researchlens_last_full_text', JSON.stringify(result));
+    setReaderStatus(result.status === 'available' ? 'Full text ready in session' : result.message || 'Full text unavailable');
+  };
 
   const abstractPreview =
     paper.abstract.length > 200
@@ -96,6 +141,16 @@ export default function PaperCard({ paper, rank }: PaperCardProps) {
           >
             {sourceName}
           </span>
+          <span
+            className={`rounded-md border px-2 py-0.5 text-xs font-medium ${accessTone(paper.accessType)}`}
+          >
+            {accessLabel(paper.accessType)}
+          </span>
+          {paper.retrievalFit && (
+            <span className="rounded-md border border-border-subtle bg-bg-secondary px-2 py-0.5 text-xs font-medium capitalize text-text-secondary">
+              {paper.retrievalFit} retrieval fit
+            </span>
+          )}
         </div>
         {paper.citationCount > 0 && (
           <span className="text-xs text-text-tertiary whitespace-nowrap">
@@ -116,6 +171,19 @@ export default function PaperCard({ paper, rank }: PaperCardProps) {
         {paper.venue ? ` · ${paper.venue}` : ''}
       </p>
 
+      {paper.matchedFacets && paper.matchedFacets.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {paper.matchedFacets.map((facet) => (
+            <span
+              key={facet}
+              className="rounded-md border border-accent-base/25 bg-accent-base/10 px-2 py-0.5 text-[11px] text-accent-text"
+            >
+              {facet}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Abstract */}
       <div className="mb-3">
         <div id={`paper-abstract-${paper.id || rank}`}>
@@ -135,21 +203,44 @@ export default function PaperCard({ paper, rank }: PaperCardProps) {
         )}
       </div>
 
-      {/* DOI link */}
-      {paper.doi && (
-        <a
-          href={`https://doi.org/${paper.doi}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Open paper: ${paper.title} in a new tab`}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-base hover:text-accent-hover transition-colors min-h-[44px]"
-        >
-          Open Paper
-          <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-          </svg>
-        </a>
+      <div className="flex flex-wrap items-center gap-2">
+        {openUrl && (
+          <a
+            href={openUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open paper: ${paper.title} in a new tab`}
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border-subtle px-3 text-xs font-medium text-accent-base transition-colors hover:text-accent-hover"
+          >
+            Open Paper
+          </a>
+        )}
+        {readable && (
+          <>
+            <button
+              type="button"
+              onClick={downloadPdf}
+              className="min-h-[40px] rounded-lg border border-border-subtle px-3 text-xs font-medium text-text-secondary hover:text-text-primary"
+            >
+              Download PDF
+            </button>
+            <button
+              type="button"
+              onClick={readInResearchLens}
+              className="min-h-[40px] rounded-lg bg-accent-base px-3 text-xs font-medium text-white hover:bg-accent-hover"
+            >
+              Read in ResearchLens
+            </button>
+          </>
+        )}
+        {!readable && (
+          <span className="text-xs text-text-tertiary">
+            Upload PDF to read full text.
+          </span>
+        )}
+      </div>
+      {readerStatus && (
+        <p className="mt-2 text-xs text-text-tertiary">{readerStatus}</p>
       )}
 
       {/* Similarity score bar */}

@@ -13,20 +13,28 @@ import {
   AnalyzeRequest,
   AnalysisResult,
   ApiError,
+  EvidenceScopeDiagnostics,
   FacultyProfile,
   FundingFit,
   GapDimension,
   JournalTarget,
   JournalTargeting,
   Paper,
+  ResearchSanityMatrix,
   UseCaseScenario,
 } from '@/lib/types';
-import { MOCK_ANALYSIS_RESULT } from '@/lib/mockData';
 import { generateGeminiText, hasGeminiCredentials } from '@/lib/geminiClient';
 import {
   OpenAlexSourceMetadata,
   searchOpenAlexSourcesBatch,
 } from '@/lib/openalexClient';
+import { searchDoajJournals } from '@/lib/doajClient';
+import {
+  computeFundingFit,
+  computePublicationFit,
+  mergeFundingFit,
+  mergePublicationFit,
+} from '@/lib/researchFit';
 
 function buildSystemPrompt(): string {
   return `You are ResearchLens, an AI research coach for thesis students and faculty supervisors.
@@ -43,7 +51,9 @@ function buildUserPrompt(
   papers: Paper[],
   gapMatrix: GapDimension[],
   facultyMatches: FacultyProfile[] = [],
-  sourceMetadata: Record<string, OpenAlexSourceMetadata | null> = {}
+  sourceMetadata: Record<string, OpenAlexSourceMetadata | null> = {},
+  sanityMatrix?: ResearchSanityMatrix,
+  evidenceScopeDiagnostics?: EvidenceScopeDiagnostics
 ): string {
   const paperList = papers
     .slice(0, 20)
@@ -83,6 +93,12 @@ ${venueEvidence}
 
 ## Pre-computed Gap Matrix
 ${JSON.stringify(gapMatrix, null, 2)}
+
+## Deterministic Research Sanity Matrix
+${sanityMatrix ? JSON.stringify(sanityMatrix, null, 2) : 'Not provided.'}
+
+## Evidence Scope / Geography Handling
+${evidenceScopeDiagnostics ? JSON.stringify(evidenceScopeDiagnostics, null, 2) : 'Balanced scope; no explicit diagnostics provided.'}
 
 ## Candidate Faculty / Supervisors
 ${facultyList}
@@ -198,6 +214,8 @@ Rules:
 - openAccessStatus must be "open" only when the venue evidence says OpenAlex reports open access; otherwise use "unknown" unless the evidence explicitly supports another value.
 - verificationUrl must be a real https URL from the venue evidence or null.
 - Return 2-4 limitations and 3-5 nextActions.
+- Use the Deterministic Research Sanity Matrix as a guardrail. Do not contradict it or overstate novelty when claimRisk is high or evidenceStrength is weak.
+- Respect the Evidence Scope / Geography Handling section. If scope is global_first or geography_independent, do not reject an idea only because local papers are sparse. If scope is strict_local, treat missing local evidence as a major limitation. If scope is compare_local_global, distinguish global saturation from local underexploration.
 - fundingFit should focus on realistic grant/internal funding framing, not invented live grant calls.
 - Return 3-5 bestAngles, 3-5 funderCategories, 3-5 searchLinks, 3-5 connectorSuggestions, 2-4 weaknesses, 2-4 collaboratorProfiles, 2-3 outreachDrafts, and exactly 3 specificAims.
 - searchLinks must be real public routes such as Grants.gov search, CORDIS, NIH RePORTER, UKRI Gateway to Research, World Bank Projects, university grant pages, or foundation program pages. Do not invent URLs.
@@ -236,10 +254,13 @@ function parseLLMResponse(text: string): Record<string, unknown> | null {
 }
 
 function createFallbackResult(
+  ideaText: string,
   papers: Paper[],
   gapMatrix: GapDimension[],
   facultyMatches: FacultyProfile[] = [],
-  sourceMetadata: Record<string, OpenAlexSourceMetadata | null> = {}
+  sourceMetadata: Record<string, OpenAlexSourceMetadata | null> = {},
+  sanityMatrix?: ResearchSanityMatrix,
+  evidenceScopeDiagnostics?: EvidenceScopeDiagnostics
 ): AnalysisResult {
   const crowdedCount = gapMatrix.filter((g) => g.saturation === 'crowded').length;
   const overlapRisk =
@@ -284,108 +305,32 @@ function createFallbackResult(
       'Refine the topic around an open gap dimension.',
       'Validate the direction with a supervisor.',
     ],
-    fundingFit: {
-      readiness: 'medium',
-      score: 50,
-      bestAngles: [
-        'Internal university seed funding',
-        'Early-stage thesis pilot study',
-        'Education or discipline-specific innovation',
-      ],
-      funderCategories: [
-        'University internal research grants',
-        'Departmental thesis support funds',
-        'Small seed grants',
-      ],
-      searchLinks: [
-        {
-          label: 'Grants.gov search',
-          url: 'https://www.grants.gov/search-grants',
-          purpose: 'Search US federal grant opportunities by topic keyword.',
-        },
-        {
-          label: 'CORDIS projects',
-          url: 'https://cordis.europa.eu/projects',
-          purpose: 'Explore EU-funded research projects and framing patterns.',
-        },
-        {
-          label: 'World Bank projects',
-          url: 'https://projects.worldbank.org/',
-          purpose: 'Find development-oriented project language and funder priorities.',
-        },
-      ],
-      internalRoutes: [
-        {
-          label: 'Faculty Directory',
-          href: '/faculty',
-          purpose: 'Find collaborators or supervisors who strengthen funding fit.',
-        },
-        {
-          label: 'Saved Reports',
-          href: '/reports',
-          purpose: 'Review saved analyses before preparing a grant abstract.',
-        },
-      ],
-      connectorSuggestions: [
-        {
-          name: 'Grants.gov',
-          type: 'government',
-          purpose: 'Live opportunity search for US federal grants.',
-          status: 'future_integration',
-        },
-        {
-          name: 'NIH RePORTER',
-          type: 'grant_database',
-          purpose: 'Find funded biomedical and behavioral research precedents.',
-          status: 'future_integration',
-        },
-        {
-          name: 'CORDIS',
-          type: 'grant_database',
-          purpose: 'Discover EU-funded project topics and consortium framing.',
-          status: 'future_integration',
-        },
-      ],
-      grantReadyFraming:
-        'The idea can be framed as a small pilot study once the outcome, population, and method are narrowed.',
-      weaknesses: [
-        'AI reasoning is unavailable.',
-        'The measurable outcome and implementation partner need refinement.',
-      ],
-      collaboratorProfiles: [
-        'Subject-matter supervisor',
-        'Methods or statistics advisor',
-      ],
-      outreachDrafts: [
-        {
-          title: 'Funding office inquiry',
-          recipientType: 'funding_office',
-          body: 'Hello, I am preparing a small research pilot and would appreciate guidance on internal funding opportunities that support early-stage thesis or student research. The project is being refined around a clear research gap, feasible method, and supervisor feedback. Could you advise which internal schemes or deadlines may be appropriate?',
-        },
-        {
-          title: 'Potential collaborator note',
-          recipientType: 'potential_collaborator',
-          body: 'Dear Professor, I am developing a small pilot study and noticed that your expertise may align with the topic and methodology. I would value a brief conversation about whether the framing is feasible and whether there are collaboration or supervision pathways I should consider.',
-        },
-      ],
-      miniGrantAbstract:
-        'This pilot project will refine a student research idea into a feasible, evidence-informed study. Using retrieved literature and a gap matrix, the project will identify a defensible research gap, narrow the study population and method, and prepare a supervisor-reviewed proposal. The expected output is a focused thesis plan with a realistic data collection path and preliminary evidence base.',
-      specificAims: [
-        'Identify the closest existing studies and remaining gap dimensions.',
-        'Refine the study population, context, and method into a feasible design.',
-        'Prepare a supervisor-ready proposal brief and reading list.',
-      ],
-      impactStatement:
-        'The project can reduce duplicated thesis work and improve proposal quality before formal supervision.',
-      budgetScale: 'small_internal',
-    },
-    journalTargeting: createJournalTargetingFallback(papers, sourceMetadata),
+    fundingFit: computeFundingFit({
+      ideaText,
+      papers,
+      gapMatrix,
+      facultyMatches,
+      sourceMetadata,
+      sanityMatrix,
+      evidenceScopeDiagnostics,
+    }),
+    journalTargeting: computePublicationFit({
+      ideaText,
+      papers,
+      gapMatrix,
+      facultyMatches,
+      sourceMetadata,
+      sanityMatrix,
+      evidenceScopeDiagnostics,
+    }),
     topRelatedPapers: papers.slice(0, 3),
     gapMatrix,
     pivots: [],
     supervisorNote:
       'AI-generated supervisor note is unavailable. Please review the retrieved papers and gap matrix to prepare a manual advisor note.',
     facultyMatches,
+    sanityMatrix,
+    evidenceScopeDiagnostics,
     totalPapersRetrieved: papers.length,
     sourceCounts: {},
   };
@@ -554,6 +499,43 @@ function buildVenueEvidenceSummary(
     .join('\n');
 }
 
+async function searchVenueMetadata(
+  venues: string[]
+): Promise<Record<string, OpenAlexSourceMetadata | null>> {
+  const sourceMetadata = await searchOpenAlexSourcesBatch(venues);
+
+  const missingVenues = venues.filter((venue) => !sourceMetadata[venue]);
+  const doajEntries = await Promise.all(
+    missingVenues.slice(0, 5).map(async (venue) => {
+      const journals = await searchDoajJournals(venue);
+      const journal = journals[0];
+      if (!journal) return [venue, null] as const;
+
+      return [
+        venue,
+        {
+          displayName: journal.title,
+          type: 'journal',
+          isOpenAccess: true,
+          issn: journal.issns[0] || null,
+          homepageUrl: journal.url,
+          publisher: journal.publisher,
+          worksCount: 0,
+          citedByCount: 0,
+        } satisfies OpenAlexSourceMetadata,
+      ] as const;
+    })
+  );
+
+  for (const [venue, metadata] of doajEntries) {
+    if (metadata) {
+      sourceMetadata[venue] = metadata;
+    }
+  }
+
+  return sourceMetadata;
+}
+
 function createJournalTargetingFallback(
   papers: Paper[],
   sourceMetadata: Record<string, OpenAlexSourceMetadata | null> = {}
@@ -718,7 +700,14 @@ export async function POST(
 ): Promise<NextResponse<AnalysisResult | ApiError>> {
   try {
     const body: AnalyzeRequest = await request.json();
-    const { idea, papers, gapMatrix, facultyMatches = [] } = body;
+    const {
+      idea,
+      papers,
+      gapMatrix,
+      facultyMatches = [],
+      sanityMatrix,
+      evidenceScopeDiagnostics,
+    } = body;
 
     if (!idea?.text || !papers?.length) {
       return NextResponse.json(
@@ -727,15 +716,40 @@ export async function POST(
       );
     }
 
-    if (!hasGeminiCredentials()) {
-      console.warn('[analyze] No Gemini credentials set; returning mock analysis result');
-      return NextResponse.json({
-        ...MOCK_ANALYSIS_RESULT,
-        facultyMatches,
-      });
-    }
+    const sourceMetadata = await searchVenueMetadata(getTopVenueNames(papers));
+    const deterministicFundingFit = computeFundingFit({
+      ideaText: idea.text,
+      papers,
+      gapMatrix,
+      facultyMatches,
+      sourceMetadata,
+      sanityMatrix,
+      evidenceScopeDiagnostics,
+    });
+    const deterministicPublicationFit = computePublicationFit({
+      ideaText: idea.text,
+      papers,
+      gapMatrix,
+      facultyMatches,
+      sourceMetadata,
+      sanityMatrix,
+      evidenceScopeDiagnostics,
+    });
 
-    const sourceMetadata = await searchOpenAlexSourcesBatch(getTopVenueNames(papers));
+    if (!hasGeminiCredentials()) {
+      console.warn('[analyze] No Gemini credentials set; returning deterministic fallback analysis result');
+      return NextResponse.json(
+        createFallbackResult(
+          idea.text,
+          papers,
+          gapMatrix,
+          facultyMatches,
+          sourceMetadata,
+          sanityMatrix,
+          evidenceScopeDiagnostics
+        )
+      );
+    }
 
     try {
       const responseText = await generateGeminiText({
@@ -746,7 +760,9 @@ export async function POST(
           papers,
           gapMatrix,
           facultyMatches,
-          sourceMetadata
+          sourceMetadata,
+          sanityMatrix,
+          evidenceScopeDiagnostics
         ),
         systemInstruction: buildSystemPrompt(),
         purpose: 'reasoning',
@@ -755,10 +771,13 @@ export async function POST(
       const parsed = responseText ? parseLLMResponse(responseText) : null;
       if (!parsed) {
         const fallback = createFallbackResult(
+          idea.text,
           papers,
           gapMatrix,
           facultyMatches,
-          sourceMetadata
+          sourceMetadata,
+          sanityMatrix,
+          evidenceScopeDiagnostics
         );
         return NextResponse.json(fallback);
       }
@@ -796,11 +815,13 @@ export async function POST(
         studentSummary: String(parsed.studentSummary || ''),
         facultySummary: String(parsed.facultySummary || ''),
         recommendedUseCases: parseUseCases(parsed.recommendedUseCases),
-        fundingFit: parseFundingFit(parsed.fundingFit),
-        journalTargeting: parseJournalTargeting(
-          parsed.journalTargeting,
-          papers,
-          sourceMetadata
+        fundingFit: mergeFundingFit(
+          deterministicFundingFit,
+          parseFundingFit(parsed.fundingFit)
+        ),
+        journalTargeting: mergePublicationFit(
+          deterministicPublicationFit,
+          parseJournalTargeting(parsed.journalTargeting, papers, sourceMetadata)
         ),
         limitations: Array.isArray(parsed.limitations)
           ? parsed.limitations.slice(0, 4).map(String)
@@ -815,6 +836,8 @@ export async function POST(
           parsed.supervisorNote || 'Supervisor note generation failed.'
         ),
         facultyMatches,
+        sanityMatrix,
+        evidenceScopeDiagnostics,
         totalPapersRetrieved: papers.length,
         sourceCounts: {},
       };
@@ -823,7 +846,15 @@ export async function POST(
     } catch (llmError) {
       console.error('[analyze] Gemini API call failed:', llmError);
       return NextResponse.json(
-        createFallbackResult(papers, gapMatrix, facultyMatches, sourceMetadata)
+        createFallbackResult(
+          idea.text,
+          papers,
+          gapMatrix,
+          facultyMatches,
+          sourceMetadata,
+          sanityMatrix,
+          evidenceScopeDiagnostics
+        )
       );
     }
   } catch (error) {

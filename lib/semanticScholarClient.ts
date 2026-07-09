@@ -30,6 +30,7 @@ const S2_FIELDS = [
   'url',
   'venue',
   'publicationTypes',
+  'paperId',
 ].join(',');
 
 /**
@@ -111,6 +112,11 @@ export async function searchSemanticScholar(
           source: 'semanticscholar',
           type: paper.publicationTypes?.[0] || 'unknown',
           venue: paper.venue || null,
+          semanticScholarId: paper.paperId || undefined,
+          externalIds: {
+            doi: doi || undefined,
+            semanticScholar: paper.paperId || undefined,
+          },
         });
       } catch (parseError) {
         console.warn('Failed to parse Semantic Scholar paper:', parseError);

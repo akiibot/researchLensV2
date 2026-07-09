@@ -7,13 +7,19 @@ import LoadingSteps from '@/components/LoadingSteps';
 import {
   AnalysisResult,
   AppMode,
+  EvidenceScope,
   FacultyProfile,
   GapDimension,
   Paper,
+  PivotExplorationContext,
   ResearchIdea,
+  RetrievalDepth,
+  RetrievalSource,
 } from '@/lib/types';
-import { rankPapers } from '@/lib/embedder';
+import { rankPapersWithEvidenceScope } from '@/lib/evidenceScope';
 import { analyzeGaps } from '@/lib/gapAnalyzer';
+import { computeResearchSanityMatrix } from '@/lib/sanityMatrix';
+import { buildThesisMindmap } from '@/lib/thesisMindmap';
 
 type PageState = 'idle' | 'loading' | 'error';
 
@@ -37,7 +43,12 @@ function HomeContent() {
   const [pageState, setPageState] = useState<PageState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [initialIdea, setInitialIdea] = useState('');
+  const [initialIdeaData, setInitialIdeaData] = useState<ResearchIdea | null>(
+    null
+  );
   const [selectedMode, setSelectedMode] = useState<AppMode | null>(null);
+  const [pivotContext, setPivotContext] =
+    useState<PivotExplorationContext | null>(null);
 
   useEffect(() => {
     if (searchParams.get('refine') !== 'true') return;
@@ -45,11 +56,23 @@ function HomeContent() {
     try {
       const stored = sessionStorage.getItem('researchlens_idea');
       const storedIdeaData = sessionStorage.getItem('researchlens_idea_data');
+      const storedPivotContext = sessionStorage.getItem(
+        'researchlens_pivot_context'
+      );
       if (stored) {
         queueMicrotask(() => setInitialIdea(stored));
       }
+      if (searchParams.get('fromPivot') === 'true' && storedPivotContext) {
+        const parsedPivotContext = JSON.parse(
+          storedPivotContext
+        ) as PivotExplorationContext;
+        queueMicrotask(() => setPivotContext(parsedPivotContext));
+      } else {
+        queueMicrotask(() => setPivotContext(null));
+      }
       if (storedIdeaData) {
         const parsed = JSON.parse(storedIdeaData) as ResearchIdea;
+        queueMicrotask(() => setInitialIdeaData(parsed));
         if (parsed.mode) {
           queueMicrotask(() => setSelectedMode(parsed.mode || 'student'));
         }
@@ -66,6 +89,9 @@ function HomeContent() {
       level: 'undergraduate' | 'masters' | 'phd';
       language: 'en' | 'bn';
       mode: AppMode;
+      evidenceScope: EvidenceScope;
+      retrievalDepth: RetrievalDepth;
+      enabledSources: RetrievalSource[];
     }) => {
       setPageState('loading');
       setErrorMessage('');
@@ -76,6 +102,7 @@ function HomeContent() {
         level: data.level,
         language: data.language,
         mode: data.mode,
+        evidenceScope: data.evidenceScope,
       };
 
       try {
@@ -84,7 +111,13 @@ function HomeContent() {
         const retrieveResponse = await fetch('/api/retrieve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idea }),
+          body: JSON.stringify({
+            idea,
+            retrieval: {
+              depth: data.retrievalDepth,
+              enabledSources: data.enabledSources,
+            },
+          }),
         });
 
         if (!retrieveResponse.ok) {
@@ -92,7 +125,8 @@ function HomeContent() {
           throw new Error(error.error || 'Failed to retrieve papers');
         }
 
-        const { papers, sourceCounts, queries } = await retrieveResponse.json();
+        const { papers, sourceCounts, queries, searchDiagnostics } =
+          await retrieveResponse.json();
 
         if (!papers || papers.length === 0) {
           throw new Error(
@@ -100,7 +134,12 @@ function HomeContent() {
           );
         }
 
-        const rankedPapers: Paper[] = rankPapers(papers, data.text);
+        const { rankedPapers, diagnostics: evidenceScopeDiagnostics } =
+          rankPapersWithEvidenceScope(
+            papers,
+            data.text,
+            data.evidenceScope
+          );
         const gapMatrix: GapDimension[] = analyzeGaps(rankedPapers, data.text);
 
         let facultyMatches: FacultyProfile[] = [];
@@ -123,6 +162,15 @@ function HomeContent() {
           console.warn('Faculty search failed:', facultyError);
         }
 
+        const sanityMatrix = computeResearchSanityMatrix({
+          ideaText: data.text,
+          papers: rankedPapers,
+          gapMatrix,
+          sourceCounts,
+          facultyMatches,
+          evidenceScope: data.evidenceScope,
+        });
+
         const analyzeResponse = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -131,6 +179,8 @@ function HomeContent() {
             papers: rankedPapers.slice(0, 20),
             gapMatrix,
             facultyMatches,
+            sanityMatrix,
+            evidenceScopeDiagnostics,
           }),
         });
 
@@ -143,6 +193,9 @@ function HomeContent() {
           analysisResult.sourceCounts = sourceCounts;
           analysisResult.gapMatrix = gapMatrix;
           analysisResult.facultyMatches = facultyMatches;
+          analysisResult.sanityMatrix = sanityMatrix;
+          analysisResult.evidenceScopeDiagnostics = evidenceScopeDiagnostics;
+          analysisResult.searchDiagnostics = searchDiagnostics;
         } else {
           const crowdedCount = gapMatrix.filter(
             (g) => g.saturation === 'crowded'
@@ -268,6 +321,9 @@ function HomeContent() {
             totalPapersRetrieved: papers.length,
             sourceCounts,
             facultyMatches,
+            sanityMatrix,
+            evidenceScopeDiagnostics,
+            searchDiagnostics,
           };
         }
 
@@ -284,6 +340,15 @@ function HomeContent() {
             'Gemini Flash summary model',
           note: 'Deep reasoning is used for gap analysis. Flash-class models are used for summaries and outreach drafts.',
         };
+        analysisResult.thesisMindmap = buildThesisMindmap({
+          ideaText: data.text,
+          rankedPapers,
+          gapMatrix,
+          pivots: analysisResult.pivots,
+          sanityMatrix,
+          evidenceScopeDiagnostics,
+          sourceCounts,
+        });
 
         sessionStorage.setItem(
           'researchlens_result',
@@ -409,7 +474,9 @@ function HomeContent() {
             onSubmit={handleSubmit}
             isLoading={false}
             initialIdea={initialIdea}
+            initialIdeaData={initialIdeaData || undefined}
             mode={selectedMode}
+            pivotContext={pivotContext}
           />
         </div>
       )}

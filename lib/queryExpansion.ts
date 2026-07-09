@@ -10,6 +10,7 @@
 
 import { ResearchIdea } from './types';
 import { generateGeminiText, hasGeminiCredentials } from './geminiClient';
+import { buildFacetedQueries } from './facetedRetrieval';
 
 /** Common English stopwords to filter out during keyword extraction */
 const STOPWORDS = new Set([
@@ -282,6 +283,9 @@ export async function expandQueries(idea: ResearchIdea): Promise<string[]> {
   const llmQueries = await getLLMQueries(workingText, idea.field);
   queries.push(...llmQueries);
 
+  const faceted = buildFacetedQueries(idea, queries);
+  queries.unshift(...faceted.generatedQueries);
+
   // Deduplicate by exact match (case-insensitive)
   const seen = new Set<string>();
   const unique = queries.filter((q) => {
@@ -292,5 +296,5 @@ export async function expandQueries(idea: ResearchIdea): Promise<string[]> {
   });
 
   // Ensure we return 5–8 queries
-  return unique.slice(0, 8);
+  return unique.slice(0, 10);
 }

@@ -18,6 +18,7 @@ import { Pivot } from '@/lib/types';
 interface PivotCardProps {
   pivot: Pivot;
   index: number;
+  onExplorePivot?: (pivot: Pivot) => void;
 }
 
 /** Color config per gap dimension */
@@ -55,7 +56,7 @@ const DIMENSION_COLORS: Record<
  * PivotCard renders a single evidence-backed research pivot with
  * expandable rationale.
  */
-export default function PivotCard({ pivot, index }: PivotCardProps) {
+export default function PivotCard({ pivot, index, onExplorePivot }: PivotCardProps) {
   const [expanded, setExpanded] = useState(false);
   const colors = DIMENSION_COLORS[pivot.targetGap] || DIMENSION_COLORS.topic;
 
@@ -86,26 +87,38 @@ export default function PivotCard({ pivot, index }: PivotCardProps) {
           {pivot.description}
         </p>
 
-        {/* Expandable rationale */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          aria-expanded={expanded}
-          aria-controls={`pivot-rationale-${index}`}
-          className={`text-xs font-medium ${colors.accent} hover:underline cursor-pointer flex items-center gap-1 transition-all min-h-[44px]`}
-        >
-          {expanded ? 'Hide rationale' : 'Why this works'}
-          <svg
-            className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
-            viewBox="0 0 20 20"
-            fill="currentColor"
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Expandable rationale */}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            aria-controls={`pivot-rationale-${index}`}
+            className={`text-xs font-medium ${colors.accent} hover:underline cursor-pointer flex items-center gap-1 transition-all min-h-[44px]`}
           >
-            <path
-              fillRule="evenodd"
-              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
+            {expanded ? 'Hide rationale' : 'Why this works'}
+            <svg
+              className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+
+          {onExplorePivot && (
+            <button
+              type="button"
+              onClick={() => onExplorePivot(pivot)}
+              className="text-xs font-medium text-text-primary bg-bg-secondary border border-border-subtle hover:border-accent-base/40 hover:text-accent-hover rounded-lg px-3 py-2 min-h-[44px] transition-all cursor-pointer"
+            >
+              Explore Pivot
+            </button>
+          )}
+        </div>
 
         {expanded && (
           <div id={`pivot-rationale-${index}`} className="mt-1 pt-3 border-t border-border-subtle animate-fade-in">

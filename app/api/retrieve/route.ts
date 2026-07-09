@@ -4,7 +4,7 @@
  * POST /api/retrieve
  *
  * Accepts a ResearchIdea, expands it into search queries, fires queries
- * against OpenAlex + Semantic Scholar + DataCite in parallel using
+ * against OpenAlex + Semantic Scholar + PubMed + DataCite + arXiv + Europe PMC + CORE in parallel using
  * Promise.allSettled (so one source failing doesn't block others),
  * deduplicates results by DOI/title, and returns the combined corpus.
  *
@@ -14,14 +14,88 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ResearchIdea, RetrievalResponse, ApiError } from '@/lib/types';
+import {
+  ResearchIdea,
+  RetrievalResponse,
+  ApiError,
+  Paper,
+  RetrievalDepth,
+  RetrievalSource,
+} from '@/lib/types';
 import { expandQueries } from '@/lib/queryExpansion';
 import { searchOpenAlexBatch } from '@/lib/openalexClient';
 import { searchSemanticScholarBatch } from '@/lib/semanticScholarClient';
 import { searchDataCiteBatch } from '@/lib/dataciteClient';
+import { searchArxivBatch } from '@/lib/arxivClient';
+import { searchEuropePmcBatch } from '@/lib/europePmcClient';
+import { searchCoreBatch } from '@/lib/coreClient';
+import { searchPubMedBatch } from '@/lib/pubmedClient';
+import { enrichPapersWithUnpaywall } from '@/lib/unpaywallClient';
+import { applyAccessInfo } from '@/lib/paperAccess';
+import {
+  buildDriftWarning,
+  buildFacetedQueries,
+  shouldSkipBiomedicalSources,
+} from '@/lib/facetedRetrieval';
 import { deduplicatePapers } from '@/lib/deduplicator';
 import { MOCK_PAPERS } from '@/lib/mockData';
 import { hasGeminiCredentials } from '@/lib/geminiClient';
+
+const ALL_RETRIEVAL_SOURCES: RetrievalSource[] = [
+  'openalex',
+  'semanticscholar',
+  'datacite',
+  'arxiv',
+  'europepmc',
+  'core',
+  'pubmed',
+];
+
+function parseEnabledSources(value: unknown): Set<RetrievalSource> {
+  if (!Array.isArray(value)) {
+    return new Set(ALL_RETRIEVAL_SOURCES);
+  }
+
+  const allowed = new Set<RetrievalSource>(ALL_RETRIEVAL_SOURCES);
+  const selected = value.filter((source): source is RetrievalSource =>
+    allowed.has(source as RetrievalSource)
+  );
+
+  return new Set(selected.length > 0 ? selected : ALL_RETRIEVAL_SOURCES);
+}
+
+function emptySourceCounts(): Record<RetrievalSource, number> {
+  return {
+    openalex: 0,
+    semanticscholar: 0,
+    datacite: 0,
+    arxiv: 0,
+    europepmc: 0,
+    core: 0,
+    pubmed: 0,
+  };
+}
+
+function parseRetrievalDepth(value: unknown): RetrievalDepth {
+  return ['fast', 'balanced', 'full', 'custom'].includes(String(value))
+    ? (String(value) as RetrievalDepth)
+    : 'full';
+}
+
+function selectQueriesForDepth(
+  queries: string[],
+  depth: RetrievalDepth
+): string[] {
+  if (depth === 'fast') return queries.slice(0, 4);
+  if (depth === 'balanced') return queries.slice(0, 6);
+  return queries;
+}
+
+function getUnpaywallLimit(depth: RetrievalDepth): number {
+  if (depth === 'fast') return 0;
+  if (depth === 'balanced') return 10;
+  return 25;
+}
 
 /**
  * Handles POST requests for paper retrieval.
@@ -43,6 +117,8 @@ export async function POST(
   try {
     const body = await request.json();
     const idea: ResearchIdea = body.idea;
+    const retrievalDepth = parseRetrievalDepth(body.retrieval?.depth || body.retrievalDepth);
+    const enabledSources = parseEnabledSources(body.retrieval?.enabledSources || body.sources);
 
     // Validate input
     if (!idea?.text || idea.text.trim().length === 0) {
@@ -78,67 +154,88 @@ export async function POST(
         openalex: MOCK_PAPERS.filter(p => p.source === 'openalex').length,
         semanticscholar: MOCK_PAPERS.filter(p => p.source === 'semanticscholar').length,
         datacite: MOCK_PAPERS.filter(p => p.source === 'datacite').length,
+        arxiv: 0,
+        europepmc: 0,
+        core: 0,
+        pubmed: 0,
       };
       return NextResponse.json({
         papers: MOCK_PAPERS,
         sourceCounts,
         queries: mockQueries,
+        searchDiagnostics: {
+          problem: [],
+          domain: [],
+          languageContext: [],
+          method: [],
+          intervention: [],
+          geography: [],
+          generatedQueries: mockQueries,
+          skippedSources: [],
+        },
       });
     }
 
     // Step 1: Expand into search queries
     const queries = await expandQueries(idea);
+    const searchDiagnostics = buildFacetedQueries(idea, queries);
+    if (shouldSkipBiomedicalSources(idea)) {
+      enabledSources.delete('pubmed');
+      enabledSources.delete('europepmc');
+    }
+    const retrievalQueries = selectQueriesForDepth(queries, retrievalDepth);
     console.log(`[retrieve] Expanded into ${queries.length} queries:`, queries);
 
     // Step 2: Fire all source queries in parallel
-    const [openAlexResult, semanticScholarResult, dataCiteResult] =
+    const [
+      openAlexResult,
+      semanticScholarResult,
+      dataCiteResult,
+      arxivResult,
+      europePmcResult,
+      coreResult,
+      pubMedResult,
+    ] =
       await Promise.allSettled([
-        searchOpenAlexBatch(queries),
-        searchSemanticScholarBatch(queries),
-        searchDataCiteBatch(queries),
+        enabledSources.has('openalex') ? searchOpenAlexBatch(retrievalQueries) : Promise.resolve([]),
+        enabledSources.has('semanticscholar')
+          ? searchSemanticScholarBatch(retrievalQueries)
+          : Promise.resolve([]),
+        enabledSources.has('datacite') ? searchDataCiteBatch(retrievalQueries) : Promise.resolve([]),
+        enabledSources.has('arxiv') ? searchArxivBatch(retrievalQueries) : Promise.resolve([]),
+        enabledSources.has('europepmc') ? searchEuropePmcBatch(retrievalQueries) : Promise.resolve([]),
+        enabledSources.has('core') ? searchCoreBatch(retrievalQueries) : Promise.resolve([]),
+        enabledSources.has('pubmed') ? searchPubMedBatch(retrievalQueries) : Promise.resolve([]),
       ]);
 
     // Step 3: Collect results and track source counts
-    const sourceCounts: Record<string, number> = {
-      openalex: 0,
-      semanticscholar: 0,
-      datacite: 0,
-    };
+    const sourceCounts = emptySourceCounts();
 
-    const allPapers = [];
+    const allPapers: Paper[] = [];
     const warnings: string[] = [];
 
-    if (openAlexResult.status === 'fulfilled') {
-      allPapers.push(...openAlexResult.value);
-      sourceCounts.openalex = openAlexResult.value.length;
-      console.log(`[retrieve] OpenAlex returned ${openAlexResult.value.length} papers`);
-    } else {
-      warnings.push('OpenAlex search failed');
-      console.error('[retrieve] OpenAlex failed:', openAlexResult.reason);
-    }
+    const collectResult = (
+      sourceKey: RetrievalSource,
+      sourceLabel: string,
+      result: PromiseSettledResult<Paper[]>
+    ) => {
+      if (result.status === 'fulfilled') {
+        allPapers.push(...result.value);
+        sourceCounts[sourceKey] = result.value.length;
+        console.log(`[retrieve] ${sourceLabel} returned ${result.value.length} papers`);
+      } else {
+        warnings.push(`${sourceLabel} search failed`);
+        console.error(`[retrieve] ${sourceLabel} failed:`, result.reason);
+      }
+    };
 
-    if (semanticScholarResult.status === 'fulfilled') {
-      allPapers.push(...semanticScholarResult.value);
-      sourceCounts.semanticscholar = semanticScholarResult.value.length;
-      console.log(
-        `[retrieve] Semantic Scholar returned ${semanticScholarResult.value.length} papers`
-      );
-    } else {
-      warnings.push('Semantic Scholar search failed');
-      console.error(
-        '[retrieve] Semantic Scholar failed:',
-        semanticScholarResult.reason
-      );
-    }
-
-    if (dataCiteResult.status === 'fulfilled') {
-      allPapers.push(...dataCiteResult.value);
-      sourceCounts.datacite = dataCiteResult.value.length;
-      console.log(`[retrieve] DataCite returned ${dataCiteResult.value.length} papers`);
-    } else {
-      warnings.push('DataCite search failed');
-      console.error('[retrieve] DataCite failed:', dataCiteResult.reason);
-    }
+    collectResult('openalex', 'OpenAlex', openAlexResult);
+    collectResult('semanticscholar', 'Semantic Scholar', semanticScholarResult);
+    collectResult('datacite', 'DataCite', dataCiteResult);
+    collectResult('arxiv', 'arXiv', arxivResult);
+    collectResult('europepmc', 'Europe PMC', europePmcResult);
+    collectResult('core', 'CORE', coreResult);
+    collectResult('pubmed', 'PubMed', pubMedResult);
 
     // Check if ALL sources failed
     if (allPapers.length === 0) {
@@ -153,16 +250,22 @@ export async function POST(
     }
 
     // Step 4: Deduplicate
-    const deduplicated = deduplicatePapers(allPapers);
+    const deduplicated = await enrichPapersWithUnpaywall(
+      deduplicatePapers(allPapers),
+      getUnpaywallLimit(retrievalDepth)
+    );
+    const accessResolved = deduplicated.map(applyAccessInfo);
+    searchDiagnostics.driftWarning = buildDriftWarning(accessResolved);
     console.log(
-      `[retrieve] Deduplicated: ${allPapers.length} to ${deduplicated.length} papers`
+      `[retrieve] Deduplicated: ${allPapers.length} to ${accessResolved.length} papers`
     );
 
     // Return results
     return NextResponse.json({
-      papers: deduplicated,
+      papers: accessResolved,
       sourceCounts,
       queries,
+      searchDiagnostics,
     });
   } catch (error) {
     console.error('[retrieve] Unexpected error:', error);

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "med_tb_xray_bangladesh",
+    "idea": "AI diagnosis of tuberculosis using chest X-rays in Bangladesh",
+    "field": "Medicine",
+    "scope": "compare_local_global",
+    "exactTerms": ["tuberculosis", "chest", "x ray", "ai"],
+    "geographyTerms": ["bangladesh"],
+    "geographyExpectation": "compare",
+    "notes": "Should show strong global evidence and limited but visible Bangladesh evidence."
+  },
+  {
+    "id": "med_breast_cancer_ml",
+    "idea": "Machine learning for breast cancer prediction",
+    "field": "Medicine",
+    "scope": "geography_independent",
+    "exactTerms": ["machine learning", "breast cancer", "prediction"],
+    "geographyTerms": [],
+    "geographyExpectation": "none",
+    "notes": "Crowded baseline; sanity claim risk should not look too low."
+  },
+  {
+    "id": "edu_online_learning_bd",
+    "idea": "Impact of online learning on university student motivation in Bangladesh",
+    "field": "Education",
+    "scope": "compare_local_global",
+    "exactTerms": ["online learning", "student", "motivation"],
+    "geographyTerms": ["bangladesh"],
+    "geographyExpectation": "compare",
+    "notes": "Broad education topic; should recommend narrowing."
+  },
+  {
+    "id": "cs_underwater_vit",
+    "idea": "Vision transformers for underwater object detection in murky water",
+    "field": "Computer Science",
+    "scope": "geography_independent",
+    "exactTerms": ["vision", "transformer", "underwater", "object detection"],
+    "geographyTerms": [],
+    "geographyExpectation": "none",
+    "notes": "Technical topic where geography should not matter."
+  },
+  {
+    "id": "edu_ai_feedback_utaut_bd",
+    "idea": "Teacher adoption of AI feedback tools in Bangladeshi private universities using UTAUT model",
+    "field": "Education",
+    "scope": "strict_local",
+    "exactTerms": ["teacher", "ai", "feedback", "utaut"],
+    "geographyTerms": ["bangladesh", "bangladeshi"],
+    "geographyExpectation": "strict",
+    "notes": "Method/theory/context are explicit; local relevance should matter."
+  },
+  {
+    "id": "public_health_dengue_dhaka",
+    "idea": "Machine learning prediction of dengue outbreak risk using climate data in Dhaka",
+    "field": "Medicine",
+    "scope": "strict_local",
+    "exactTerms": ["machine learning", "dengue", "climate", "outbreak"],
+    "geographyTerms": ["dhaka"],
+    "geographyExpectation": "strict",
+    "notes": "Local public health topic; strict local should preserve Dhaka/Bangladesh evidence when available."
+  },
+  {
+    "id": "cs_rag_legal_low_resource",
+    "idea": "Retrieval augmented generation for legal question answering in low-resource languages",
+    "field": "Computer Science",
+    "scope": "geography_independent",
+    "exactTerms": ["retrieval augmented generation", "legal", "question answering", "low resource"],
+    "geographyTerms": [],
+    "geographyExpectation": "none",
+    "notes": "Exact technical terms matter; geography should not be inferred."
+  },
+  {
+    "id": "business_blockchain_sme_bd",
+    "idea": "Blockchain adoption barriers in small and medium enterprises in Bangladesh",
+    "field": "Business",
+    "scope": "compare_local_global",
+    "exactTerms": ["blockchain", "adoption", "small", "medium", "enterprises"],
+    "geographyTerms": ["bangladesh"],
+    "geographyExpectation": "compare",
+    "notes": "Business adoption literature may be global with a local adaptation angle."
+  }
+]

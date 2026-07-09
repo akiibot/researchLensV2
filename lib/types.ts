@@ -17,9 +17,55 @@ export interface ResearchIdea {
   level: 'undergraduate' | 'masters' | 'phd';
   language: 'en' | 'bn';
   mode?: AppMode;
+  evidenceScope?: EvidenceScope;
 }
 
 export type AppMode = 'student' | 'faculty';
+
+export type EvidenceScope =
+  | 'balanced'
+  | 'strict_local'
+  | 'global_first'
+  | 'geography_independent'
+  | 'compare_local_global';
+
+export interface EvidenceScopeDiagnostics {
+  scope: EvidenceScope;
+  label: string;
+  detectedGeographyTerms: string[];
+  top10LocalMatches: number;
+  top20LocalMatches: number;
+  localEvidenceCount: number;
+  globalEvidenceCount: number;
+  summary: string;
+}
+
+export type PaperAccessType =
+  | 'open_pdf'
+  | 'open_landing'
+  | 'core_download'
+  | 'user_uploaded'
+  | 'abstract_only'
+  | 'paywalled'
+  | 'unknown';
+
+export type FullTextStatus = 'available' | 'processing' | 'failed' | 'unavailable';
+
+export type FullTextSource =
+  | 'core'
+  | 'unpaywall'
+  | 'arxiv'
+  | 'europepmc'
+  | 'user_upload';
+
+export interface PaperAccessInfo {
+  accessType: PaperAccessType;
+  pdfUrl?: string;
+  landingUrl?: string;
+  fullTextStatus: FullTextStatus;
+  fullTextSource?: FullTextSource;
+  fullTextVerifiedAt?: string;
+}
 
 /**
  * Represents a single academic paper retrieved from an external API.
@@ -48,11 +94,128 @@ export interface Paper {
   doi: string | null;
   url: string | null;
   citationCount: number;
-  source: 'openalex' | 'semanticscholar' | 'crossref' | 'datacite';
+  source: PaperSource;
   type: string;
   venue: string | null;
   similarityScore?: number;
+  accessType?: PaperAccessType;
+  pdfUrl?: string;
+  landingUrl?: string;
+  fullTextStatus?: FullTextStatus;
+  fullTextSource?: FullTextSource;
+  fullTextVerifiedAt?: string;
+  coreId?: string;
+  openAlexId?: string;
+  semanticScholarId?: string;
+  externalIds?: {
+    doi?: string;
+    openalex?: string;
+    semanticScholar?: string;
+    orcid?: string;
+  };
+  referencedWorkIds?: string[];
+  relatedWorkIds?: string[];
+  citedByApiUrl?: string;
+  retrievalFit?: 'strong' | 'partial' | 'weak';
+  matchedFacets?: string[];
+  missingFacets?: string[];
 }
+
+export type EvidenceLineageNodeRole =
+  | 'origin'
+  | 'foundational'
+  | 'neighboring'
+  | 'derivative'
+  | 'novelty_threat'
+  | 'method_source';
+
+export type EvidenceLineageEdgeKind =
+  | 'references'
+  | 'cited_by'
+  | 'related'
+  | 'bibliographic_coupling'
+  | 'co_citation'
+  | 'inferred_similarity';
+
+export interface EvidenceLineageNode {
+  id: string;
+  paper: Paper;
+  role: EvidenceLineageNodeRole;
+  similarityToIdea: number;
+  explanation: string;
+  sourceProvider?: 'openalex' | 'semantic_scholar' | 'local';
+  isExpanded?: boolean;
+  threatScore?: number;
+}
+
+export interface EvidenceLineageEdge {
+  id: string;
+  source: string;
+  target: string;
+  kind: EvidenceLineageEdgeKind;
+  strength: number;
+  explanation: string;
+  sharedReferences?: number;
+  sharedCitations?: number;
+  yearDelta?: number;
+  sourceProvider?: 'openalex' | 'semantic_scholar' | 'local';
+}
+
+export interface EvidenceLineageGraph {
+  originPaperId: string;
+  originTitle: string;
+  nodes: EvidenceLineageNode[];
+  edges: EvidenceLineageEdge[];
+  warnings: string[];
+  generatedAt?: string;
+  depth?: 'fast' | 'expanded';
+  origin?: {
+    id: string;
+    title: string;
+    year?: number;
+    doi?: string | null;
+  };
+  nodeStats?: Partial<Record<EvidenceLineageNodeRole, number>>;
+  edgeStats?: Partial<Record<EvidenceLineageEdgeKind, number>>;
+  sourceSummary: {
+    openAlex: number;
+    semanticScholar: number;
+    local: number;
+  };
+}
+
+export interface SearchFacetDiagnostics {
+  problem: string[];
+  domain: string[];
+  languageContext: string[];
+  method: string[];
+  intervention: string[];
+  geography: string[];
+  generatedQueries: string[];
+  skippedSources: RetrievalSource[];
+  driftWarning?: string;
+}
+
+export type PaperSource =
+  | 'openalex'
+  | 'semanticscholar'
+  | 'crossref'
+  | 'datacite'
+  | 'arxiv'
+  | 'europepmc'
+  | 'core'
+  | 'pubmed';
+
+export type RetrievalSource =
+  | 'openalex'
+  | 'semanticscholar'
+  | 'datacite'
+  | 'arxiv'
+  | 'europepmc'
+  | 'core'
+  | 'pubmed';
+
+export type RetrievalDepth = 'fast' | 'balanced' | 'full' | 'custom';
 
 /**
  * One dimension of the four-dimension gap matrix.
@@ -87,6 +250,107 @@ export interface Pivot {
   targetGap: 'topic' | 'method' | 'population' | 'geography';
 }
 
+export interface PivotExplorationContext {
+  pivotTitle: string;
+  targetGap: Pivot['targetGap'];
+  previousIdeaText: string;
+}
+
+export type SanityLevel = 'strong' | 'moderate' | 'weak' | 'high-risk';
+
+export interface ResearchSanityCriterion {
+  score: number;
+  level: SanityLevel;
+  rationale: string;
+}
+
+export interface ResearchSanityMatrix {
+  noveltyPotential: ResearchSanityCriterion;
+  evidenceStrength: ResearchSanityCriterion;
+  feasibility: ResearchSanityCriterion;
+  supervisorFit: ResearchSanityCriterion;
+  claimRisk: ResearchSanityCriterion;
+  overallScore: number;
+  verdict:
+    | 'Thesis-ready direction'
+    | 'Promising but needs narrowing'
+    | 'Risky, needs redesign'
+    | 'Weak evidence, rerun or broaden search';
+  reasons: string[];
+  recommendedActions: string[];
+  fullTextCoverage?: {
+    readableCount: number;
+    totalKeyPapers: number;
+    label: string;
+  };
+}
+
+export interface PaperFullTextSections {
+  abstract?: string;
+  introduction?: string;
+  methods?: string;
+  results?: string;
+  discussion?: string;
+  limitations?: string;
+  futureWork?: string;
+  references?: string;
+}
+
+export interface PaperFullTextResult {
+  paperId: string;
+  status: 'available' | 'failed' | 'unavailable';
+  access: PaperAccessInfo;
+  title?: string;
+  text?: string;
+  sections?: PaperFullTextSections;
+  pageCount?: number;
+  message?: string;
+}
+
+export type ThesisMindmapBranchKind =
+  | 'topic'
+  | 'method'
+  | 'population'
+  | 'geography'
+  | 'evidence'
+  | 'risk'
+  | 'pivots';
+
+export type ThesisMindmapNodeStatus =
+  | 'crowded'
+  | 'moderate'
+  | 'open'
+  | 'strong'
+  | 'weak'
+  | 'risk'
+  | 'neutral';
+
+export interface ThesisMindmapNode {
+  id: string;
+  label: string;
+  status: ThesisMindmapNodeStatus;
+  paperCount?: number;
+  description: string;
+  supportingPaperIds?: string[];
+  pivotIndex?: number;
+  action?: 'explore_pivot' | 'read_papers' | 'narrow_scope';
+}
+
+export interface ThesisMindmapBranch {
+  id: string;
+  label: string;
+  kind: ThesisMindmapBranchKind;
+  summary: string;
+  nodes: ThesisMindmapNode[];
+}
+
+export interface ThesisMindmap {
+  center: string;
+  branches: ThesisMindmapBranch[];
+  bestOpportunityNodeId?: string;
+  warnings: string[];
+}
+
 export interface FacultyProfile {
   id: string;
   openAlexAuthorId: string;
@@ -119,6 +383,8 @@ export interface UseCaseScenario {
 export interface FundingFit {
   readiness: 'high' | 'medium' | 'low';
   score: number;
+  biggestBlocker?: string;
+  nextBestAction?: string;
   bestAngles: string[];
   funderCategories: string[];
   searchLinks?: {
@@ -177,6 +443,9 @@ export interface JournalTarget {
 export interface JournalTargeting {
   targets: JournalTarget[];
   notes: string[];
+  recommendedRoute?: string;
+  biggestBlocker?: string;
+  nextBestAction?: string;
 }
 
 /**
@@ -212,6 +481,10 @@ export interface AnalysisResult {
   pivots: Pivot[];
   supervisorNote: string;
   facultyMatches?: FacultyProfile[];
+  sanityMatrix?: ResearchSanityMatrix;
+  evidenceScopeDiagnostics?: EvidenceScopeDiagnostics;
+  searchDiagnostics?: SearchFacetDiagnostics;
+  thesisMindmap?: ThesisMindmap;
   credibilityReasons?: string[];
   modelStatus?: {
     reasoningModel: string;
@@ -250,6 +523,7 @@ export interface RetrievalResponse {
   papers: Paper[];
   sourceCounts: Record<string, number>;
   queries: string[];
+  searchDiagnostics?: SearchFacetDiagnostics;
 }
 
 /**
@@ -260,6 +534,8 @@ export interface AnalyzeRequest {
   papers: Paper[];
   gapMatrix: GapDimension[];
   facultyMatches?: FacultyProfile[];
+  sanityMatrix?: ResearchSanityMatrix;
+  evidenceScopeDiagnostics?: EvidenceScopeDiagnostics;
 }
 
 /**

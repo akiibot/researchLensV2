@@ -17,6 +17,8 @@ const PIPELINE_STEPS = [
   { id: 'expand', label: 'Expanding your research idea into search queries...' },
   { id: 'openalex', label: 'Searching OpenAlex (250M+ papers)...' },
   { id: 'semantic', label: 'Searching Semantic Scholar (214M+ papers)...' },
+  { id: 'pubmed', label: 'Searching PubMed biomedical literature...' },
+  { id: 'preprints', label: 'Checking arXiv and Europe PMC for recent work...' },
   { id: 'datacite', label: 'Retrieving thesis & dissertation records...' },
   { id: 'dedup', label: 'Deduplicating and ranking by similarity...' },
   { id: 'gap', label: 'Building gap matrix...' },

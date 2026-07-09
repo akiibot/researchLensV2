@@ -3,9 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { FacultyProfile, Paper, ResearchIdea } from './types';
 import { withRetry } from './retry';
 import { getSupabaseServiceClient } from './supabaseServer';
+import { searchRorOrganizations } from './rorClient';
 
 const OPENALEX_WORKS_BASE = 'https://api.openalex.org/works';
 const MAX_AUTHOR_ENRICHMENT = 12;
+const rorCache = new Map<string, { country: string | null }>();
 
 interface CandidateAuthor {
   openAlexAuthorId: string;
@@ -72,6 +74,21 @@ function createMatchReasons(profile: FacultyProfile): string[] {
   return reasons.slice(0, 5);
 }
 
+async function normalizeInstitutionCountry(
+  institution: string | null,
+  country: string | null
+): Promise<string | null> {
+  if (!institution || country) return country;
+
+  const cached = rorCache.get(institution);
+  if (cached) return cached.country;
+
+  const matches = await searchRorOrganizations(institution);
+  const normalizedCountry = matches[0]?.country || null;
+  rorCache.set(institution, { country: normalizedCountry });
+  return normalizedCountry || country;
+}
+
 async function searchOpenAlexWorks(query: string): Promise<CandidateAuthor[]> {
   const response = await withRetry(() =>
     axios.get(OPENALEX_WORKS_BASE, {
@@ -136,10 +153,11 @@ async function enrichAuthor(candidate: CandidateAuthor): Promise<FacultyProfile>
       author.last_known_institutions?.[0]?.display_name ||
       candidate.institution ||
       null;
-    const country =
+    const rawCountry =
       author.last_known_institutions?.[0]?.country_code ||
       candidate.country ||
       null;
+    const country = await normalizeInstitutionCountry(institution, rawCountry);
     const topics = Array.isArray(author.topics)
       ? author.topics
           .map((topic: { display_name?: string }) => topic.display_name)
@@ -175,7 +193,7 @@ async function enrichAuthor(candidate: CandidateAuthor): Promise<FacultyProfile>
       openAlexAuthorId: candidate.openAlexAuthorId,
       name: candidate.name,
       institution: candidate.institution,
-      country: candidate.country,
+      country: await normalizeInstitutionCountry(candidate.institution, candidate.country),
       orcid: null,
       worksCount: 0,
       citedByCount: candidate.citationSignal,

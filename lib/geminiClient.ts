@@ -29,7 +29,7 @@ export type GeminiPurpose =
   | 'queryExpansion';
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
-const DEFAULT_REASONING_MODEL = 'gemini-3.1-pro-preview';
+const DEFAULT_REASONING_MODEL = 'gemini-2.5-pro';
 const DEFAULT_REASONING_FALLBACK_MODEL = 'gemini-2.5-pro';
 const DEFAULT_SUMMARY_MODEL = 'gemini-2.5-flash';
 const DEFAULT_LOCATION = 'us-central1';

@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AppMode } from '@/lib/types';
+import {
+  AppMode,
+  EvidenceScope,
+  PivotExplorationContext,
+  ResearchIdea,
+  RetrievalDepth,
+  RetrievalSource,
+} from '@/lib/types';
 
 const FIELDS = [
   'Education',
@@ -34,20 +41,115 @@ interface SearchFormProps {
     level: 'undergraduate' | 'masters' | 'phd';
     language: 'en' | 'bn';
     mode: AppMode;
+    evidenceScope: EvidenceScope;
+    retrievalDepth: RetrievalDepth;
+    enabledSources: RetrievalSource[];
   }) => void;
   isLoading: boolean;
   initialIdea?: string;
+  initialIdeaData?: ResearchIdea;
   mode: AppMode;
+  pivotContext?: PivotExplorationContext | null;
 }
 
 const MAX_CHARS = 500;
 const MIN_CHARS = 20;
 
+const SOURCE_OPTIONS: Array<{
+  id: RetrievalSource;
+  label: string;
+  helper: string;
+  defaultOn: boolean;
+}> = [
+  {
+    id: 'openalex',
+    label: 'OpenAlex',
+    helper: 'Broad scholarly index',
+    defaultOn: true,
+  },
+  {
+    id: 'semanticscholar',
+    label: 'Semantic Scholar',
+    helper: 'Citation and CS-heavy coverage',
+    defaultOn: true,
+  },
+  {
+    id: 'datacite',
+    label: 'DataCite',
+    helper: 'Theses, reports, datasets',
+    defaultOn: true,
+  },
+  {
+    id: 'core',
+    label: 'CORE',
+    helper: 'OA repository records',
+    defaultOn: true,
+  },
+  {
+    id: 'pubmed',
+    label: 'PubMed',
+    helper: 'Biomedical literature',
+    defaultOn: true,
+  },
+  {
+    id: 'arxiv',
+    label: 'arXiv',
+    helper: 'Recent preprints',
+    defaultOn: true,
+  },
+  {
+    id: 'europepmc',
+    label: 'Europe PMC',
+    helper: 'Life science expansion',
+    defaultOn: false,
+  },
+];
+
+const FAST_SOURCES: RetrievalSource[] = ['openalex', 'datacite', 'core'];
+const BALANCED_SOURCES: RetrievalSource[] = SOURCE_OPTIONS
+  .filter((source) => source.defaultOn)
+  .map((source) => source.id);
+const FULL_SOURCES: RetrievalSource[] = SOURCE_OPTIONS.map((source) => source.id);
+
+const EVIDENCE_SCOPE_OPTIONS: Array<{
+  id: EvidenceScope;
+  label: string;
+  helper: string;
+}> = [
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    helper: 'Lightly prefers local evidence while keeping global papers.',
+  },
+  {
+    id: 'strict_local',
+    label: 'Strict local',
+    helper: 'Prioritizes papers that preserve detected geography.',
+  },
+  {
+    id: 'global_first',
+    label: 'Global first',
+    helper: 'Maps the worldwide literature before judging local novelty.',
+  },
+  {
+    id: 'geography_independent',
+    label: 'Geo-independent',
+    helper: 'Ignores place terms when ranking papers.',
+  },
+  {
+    id: 'compare_local_global',
+    label: 'Compare local/global',
+    helper: 'Reports whether the topic is global but locally underexplored.',
+  },
+];
+
 export default function SearchForm({
   onSubmit,
   isLoading,
   initialIdea,
+  initialIdeaData,
   mode,
+  pivotContext,
 }: SearchFormProps) {
   const [text, setText] = useState(initialIdea || '');
   const [field, setField] = useState('');
@@ -55,12 +157,29 @@ export default function SearchForm({
     'undergraduate'
   );
   const [language, setLanguage] = useState<'en' | 'bn'>('en');
+  const [evidenceScope, setEvidenceScope] =
+    useState<EvidenceScope>('balanced');
+  const [retrievalDepth, setRetrievalDepth] =
+    useState<RetrievalDepth>('balanced');
+  const [enabledSources, setEnabledSources] =
+    useState<RetrievalSource[]>(BALANCED_SOURCES);
 
   useEffect(() => {
     if (initialIdea) {
       queueMicrotask(() => setText(initialIdea));
     }
   }, [initialIdea]);
+
+  useEffect(() => {
+    if (!initialIdeaData) return;
+
+    queueMicrotask(() => {
+      setField(initialIdeaData.field || '');
+      setLevel(initialIdeaData.level || 'undergraduate');
+      setLanguage(initialIdeaData.language || 'en');
+      setEvidenceScope(initialIdeaData.evidenceScope || 'balanced');
+    });
+  }, [initialIdeaData]);
 
   const charCount = text.length;
   const isValid = charCount >= MIN_CHARS && charCount <= MAX_CHARS && field !== '';
@@ -82,7 +201,34 @@ export default function SearchForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid || isLoading) return;
-    onSubmit({ text, field, level, language, mode });
+    onSubmit({
+      text,
+      field,
+      level,
+      language,
+      mode,
+      evidenceScope,
+      retrievalDepth,
+      enabledSources,
+    });
+  };
+
+  const applyDepth = (depth: RetrievalDepth) => {
+    setRetrievalDepth(depth);
+    if (depth === 'fast') setEnabledSources(FAST_SOURCES);
+    if (depth === 'balanced') setEnabledSources(BALANCED_SOURCES);
+    if (depth === 'full') setEnabledSources(FULL_SOURCES);
+  };
+
+  const toggleSource = (source: RetrievalSource) => {
+    setRetrievalDepth('custom');
+    setEnabledSources((current) => {
+      if (current.includes(source)) {
+        const next = current.filter((item) => item !== source);
+        return next.length > 0 ? next : current;
+      }
+      return [...current, source];
+    });
   };
 
   return (
@@ -93,6 +239,16 @@ export default function SearchForm({
             <div className="inline-flex items-center px-3 py-1 rounded-full bg-accent-base/10 border border-accent-base/20 text-xs font-medium text-accent-text">
               {mode === 'faculty' ? 'Faculty workflow' : 'Student workflow'}
             </div>
+            {pivotContext && (
+              <div className="mt-3 rounded-lg border border-accent-base/20 bg-accent-base/10 px-3 py-2">
+                <p className="text-xs font-medium text-accent-text">
+                  Exploring pivot from previous report: {pivotContext.pivotTitle}
+                </p>
+                <p className="text-xs text-text-tertiary mt-1">
+                  Target gap: {pivotContext.targetGap}
+                </p>
+              </div>
+            )}
             <p className="text-xs text-text-tertiary mt-2">{helper}</p>
           </div>
         </div>
@@ -235,6 +391,87 @@ export default function SearchForm({
             >
               Bangla
             </button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Evidence Scope
+            </label>
+            <select
+              value={evidenceScope}
+              onChange={(event) =>
+                setEvidenceScope(event.target.value as EvidenceScope)
+              }
+              disabled={isLoading}
+              className="w-full min-h-[44px] bg-bg-tertiary border border-border-subtle rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-base/50 focus:border-accent-base/50 transition-all disabled:opacity-50 appearance-none cursor-pointer"
+            >
+              {EVIDENCE_SCOPE_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-text-tertiary mt-2">
+              {
+                EVIDENCE_SCOPE_OPTIONS.find(
+                  (option) => option.id === evidenceScope
+                )?.helper
+              }
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Source Coverage
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['fast', 'balanced', 'full'] as const).map((depth) => (
+                <button
+                  key={depth}
+                  type="button"
+                  aria-pressed={retrievalDepth === depth}
+                  onClick={() => applyDepth(depth)}
+                  disabled={isLoading}
+                  className={`min-h-[44px] rounded-xl px-3 py-2 text-xs font-medium capitalize transition-all cursor-pointer ${
+                    retrievalDepth === depth
+                      ? 'bg-accent-base/20 border border-accent-base/40 text-accent-text'
+                      : 'bg-bg-secondary border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
+                  } disabled:opacity-50`}
+                >
+                  {depth}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-text-tertiary mt-2">
+              Fast skips rate-limited citation and specialist databases. Full checks every configured source.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {SOURCE_OPTIONS.map((source) => (
+              <label
+                key={source.id}
+                className="flex items-start gap-3 rounded-xl border border-border-subtle bg-bg-secondary px-3 py-3 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={enabledSources.includes(source.id)}
+                  onChange={() => toggleSource(source.id)}
+                  disabled={isLoading}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-xs font-medium text-text-primary">
+                    {source.label}
+                  </span>
+                  <span className="block text-xs text-text-tertiary">
+                    {source.helper}
+                  </span>
+                </span>
+              </label>
+            ))}
           </div>
         </div>
 
