@@ -40,9 +40,14 @@ Use either a Gemini API key or Vertex AI service-account credentials. The curren
 
 ```env
 GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\service-account.json
+GOOGLE_APPLICATION_CREDENTIALS_JSON={"type":"service_account","project_id":"your-google-cloud-project"}
 GOOGLE_CLOUD_PROJECT=your-google-cloud-project
 GOOGLE_CLOUD_LOCATION=us-central1
 ```
+
+Use `GOOGLE_APPLICATION_CREDENTIALS` for local development. Use
+`GOOGLE_APPLICATION_CREDENTIALS_JSON` for Vercel or any hosted deployment where
+a local credential file path is not available.
 
 Model routing:
 

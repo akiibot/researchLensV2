@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ResearchLens Product, Technical, and Business Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: '#e7edf7',
+              muted: '#9aa7b8',
+              soft: '#c6d2e1',
+              panel: '#101722',
+              panel2: '#151d2a',
+              line: '#263244',
+              accent: '#8b5cf6',
+              cyan: '#22d3ee',
+              green: '#34d399',
+              amber: '#fbbf24',
+              red: '#fb7185',
+              paper: '#f8fafc',
+            },
+            boxShadow: {
+              soft: '0 18px 70px rgba(0, 0, 0, 0.28)',
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 20% 0%, rgba(139, 92, 246, 0.16), transparent 32rem),
+          radial-gradient(circle at 80% 10%, rgba(34, 211, 238, 0.12), transparent 28rem),
+          #090d14;
+      }
+
+      .page-break {
+        break-before: page;
+      }
+
+      .avoid-break {
+        break-inside: avoid;
+      }
+
+      .section-label {
+        letter-spacing: 0.18em;
+      }
+
+      @media print {
+        @page {
+          size: A4;
+          margin: 16mm;
+        }
+
+        html,
+        body {
+          background: #ffffff !important;
+          color: #111827 !important;
+        }
+
+        .no-print {
+          display: none !important;
+        }
+
+        .print-card,
+        .print-section,
+        .print-panel {
+          background: #ffffff !important;
+          color: #111827 !important;
+          border-color: #d1d5db !important;
+          box-shadow: none !important;
+        }
+
+        .print-muted {
+          color: #4b5563 !important;
+        }
+
+        .print-title {
+          color: #111827 !important;
+        }
+
+        .print-accent {
+          color: #4338ca !important;
+        }
+
+        a {
+          color: #1d4ed8 !important;
+          text-decoration: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-ink antialiased">
+    <header class="no-print sticky top-0 z-40 border-b border-line/80 bg-[#090d14]/90 backdrop-blur-xl">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-6 py-4">
+        <a href="#top" class="flex items-center gap-3">
+          <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent text-sm font-bold text-white">RL</span>
+          <span>
+            <span class="block text-sm font-semibold">ResearchLens</span>
+            <span class="block text-xs text-muted">Product and business documentation</span>
+          </span>
+        </a>
+        <nav class="hidden items-center gap-5 text-xs text-muted lg:flex">
+          <a class="hover:text-ink" href="#what-it-is">What It Is</a>
+          <a class="hover:text-ink" href="#how-it-works">How It Works</a>
+          <a class="hover:text-ink" href="#customers">Customers</a>
+          <a class="hover:text-ink" href="#business">Business</a>
+          <a class="hover:text-ink" href="#roadmap">Roadmap</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top" class="mx-auto max-w-7xl px-6 py-10 lg:py-14">
+      <section class="print-section overflow-hidden rounded-[2rem] border border-line bg-panel/80 shadow-soft">
+        <div class="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+          <div class="p-8 sm:p-10 lg:p-12">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">ResearchLens Documentation</p>
+            <h1 class="mt-5 max-w-4xl text-4xl font-semibold leading-tight tracking-tight text-ink print-title sm:text-5xl">
+              A thesis approval and research decision system for evidence-backed academic topic development.
+            </h1>
+            <p class="mt-6 max-w-3xl text-base leading-8 text-soft print-muted">
+              ResearchLens helps students, supervisors, and academic support teams transform uncertain research ideas into defensible thesis directions. It retrieves scholarly evidence, evaluates novelty and feasibility, identifies gaps, recommends pivots, and generates supervisor-ready research material.
+            </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+              <span class="rounded-full border border-accent/40 bg-accent/15 px-4 py-2 text-xs font-semibold text-violet-200 print-card print-accent">Thesis approval</span>
+              <span class="rounded-full border border-cyan/40 bg-cyan/10 px-4 py-2 text-xs font-semibold text-cyan print-card print-accent">Evidence retrieval</span>
+              <span class="rounded-full border border-green/40 bg-green/10 px-4 py-2 text-xs font-semibold text-green print-card print-accent">Novelty defense</span>
+              <span class="rounded-full border border-amber/40 bg-amber/10 px-4 py-2 text-xs font-semibold text-amber print-card print-accent">Publication and funding fit</span>
+            </div>
+          </div>
+
+          <div class="border-t border-line bg-[#0c121c] p-8 sm:p-10 lg:border-l lg:border-t-0 lg:p-12 print-panel">
+            <div class="grid gap-4">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-xs uppercase tracking-[0.18em] text-muted print-muted">Primary promise</p>
+                <p class="mt-3 text-xl font-semibold text-ink print-title">Turn a vague idea into a supervisor-ready approval packet.</p>
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                  <p class="text-3xl font-semibold text-cyan print-accent">4D</p>
+                  <p class="mt-2 text-sm text-muted print-muted">Gap analysis across topic, method, population, and geography.</p>
+                </div>
+                <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                  <p class="text-3xl font-semibold text-green print-accent">5+</p>
+                  <p class="mt-2 text-sm text-muted print-muted">Evidence sources and enrichment paths across scholarly metadata APIs.</p>
+                </div>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-xs uppercase tracking-[0.18em] text-muted print-muted">Core outputs</p>
+                <ul class="mt-3 space-y-2 text-sm text-soft print-muted">
+                  <li>Decision Hub verdict and next best action</li>
+                  <li>Supervisor-ready approval packet</li>
+                  <li>Research Sanity Matrix</li>
+                  <li>Evidence stream and retrieval diagnostics</li>
+                  <li>Pivot ideas, mindmap workspace, paper lineage, funding fit, and publication fit</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-8 grid gap-5 md:grid-cols-4">
+        <div class="print-card avoid-break rounded-2xl border border-line bg-panel/80 p-5">
+          <p class="text-xs uppercase tracking-[0.18em] text-muted print-muted">Audience</p>
+          <p class="mt-3 text-lg font-semibold text-ink print-title">Beginner thesis students</p>
+          <p class="mt-2 text-sm leading-6 text-muted print-muted">Students who need topic clarity, evidence, and supervisor approval.</p>
+        </div>
+        <div class="print-card avoid-break rounded-2xl border border-line bg-panel/80 p-5">
+          <p class="text-xs uppercase tracking-[0.18em] text-muted print-muted">Buyer</p>
+          <p class="mt-3 text-lg font-semibold text-ink print-title">Universities and departments</p>
+          <p class="mt-2 text-sm leading-6 text-muted print-muted">Academic units that want better proposal quality and faster supervision workflows.</p>
+        </div>
+        <div class="print-card avoid-break rounded-2xl border border-line bg-panel/80 p-5">
+          <p class="text-xs uppercase tracking-[0.18em] text-muted print-muted">Value</p>
+          <p class="mt-3 text-lg font-semibold text-ink print-title">Less wasted research time</p>
+          <p class="mt-2 text-sm leading-6 text-muted print-muted">Fewer weak topics, fewer duplicated proposals, and clearer reading priorities.</p>
+        </div>
+        <div class="print-card avoid-break rounded-2xl border border-line bg-panel/80 p-5">
+          <p class="text-xs uppercase tracking-[0.18em] text-muted print-muted">Innovation</p>
+          <p class="mt-3 text-lg font-semibold text-ink print-title">Decision layer over search</p>
+          <p class="mt-2 text-sm leading-6 text-muted print-muted">ResearchLens does not just find papers. It explains what the evidence means for thesis decisions.</p>
+        </div>
+      </section>
+
+      <section id="what-it-is" class="page-break mt-14 grid gap-8 lg:grid-cols-[280px_1fr]">
+        <aside class="no-print lg:sticky lg:top-24 lg:self-start">
+          <div class="rounded-2xl border border-line bg-panel/80 p-5">
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-cyan">Contents</p>
+            <ol class="mt-4 space-y-2 text-sm text-muted">
+              <li><a href="#what-it-is" class="hover:text-ink">1. What ResearchLens Is</a></li>
+              <li><a href="#problem" class="hover:text-ink">2. Problem</a></li>
+              <li><a href="#how-it-works" class="hover:text-ink">3. How It Works</a></li>
+              <li><a href="#technology" class="hover:text-ink">4. Technology</a></li>
+              <li><a href="#customers" class="hover:text-ink">5. Customers</a></li>
+              <li><a href="#business" class="hover:text-ink">6. Business Plan</a></li>
+              <li><a href="#why-it-works" class="hover:text-ink">7. Why It Works</a></li>
+              <li><a href="#innovation" class="hover:text-ink">8. Innovation</a></li>
+              <li><a href="#roadmap" class="hover:text-ink">9. Roadmap</a></li>
+            </ol>
+          </div>
+        </aside>
+
+        <div class="space-y-10">
+          <section class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">1. Product Definition</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">What ResearchLens is</h2>
+            <p class="mt-5 text-base leading-8 text-soft print-muted">
+              ResearchLens is an academic research decision assistant. It is designed to help students and supervisors evaluate whether a thesis idea is worth pursuing, how it should be narrowed, what literature already exists, and how the idea can be defended during topic approval.
+            </p>
+            <p class="mt-4 text-base leading-8 text-soft print-muted">
+              The product sits between a search engine, a literature review assistant, and a supervisor preparation tool. Search engines return papers. General AI tools produce broad advice. ResearchLens connects the two: it retrieves evidence, scores the idea, identifies risks, and produces a practical academic decision packet.
+            </p>
+
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="text-lg font-semibold text-ink print-title">What it does</h3>
+                <ul class="mt-4 space-y-2 text-sm leading-6 text-muted print-muted">
+                  <li>Retrieves related papers from scholarly metadata sources.</li>
+                  <li>Ranks papers by relevance to the user idea.</li>
+                  <li>Detects overlap and novelty risk.</li>
+                  <li>Builds a gap matrix across topic, method, population, and geography.</li>
+                  <li>Suggests pivot directions when the idea is too crowded or vague.</li>
+                  <li>Generates supervisor-ready notes and approval packets.</li>
+                  <li>Supports publication, funding, and faculty-fit decisions.</li>
+                </ul>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="text-lg font-semibold text-ink print-title">What it is not</h3>
+                <ul class="mt-4 space-y-2 text-sm leading-6 text-muted print-muted">
+                  <li>It is not a proof of global novelty.</li>
+                  <li>It is not a replacement for reading papers.</li>
+                  <li>It does not bypass paywalls or scrape publisher sites.</li>
+                  <li>It does not guarantee supervisor approval.</li>
+                  <li>It does not invent citations, journals, grants, or deadlines.</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section id="problem" class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">2. Problem</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">The problem ResearchLens solves</h2>
+            <p class="mt-5 text-base leading-8 text-soft print-muted">
+              Many students begin thesis work with ideas that are interesting but not yet research-ready. They may not know whether the topic is already saturated, whether the method is feasible, whether enough evidence exists, or how to explain the novelty to a supervisor.
+            </p>
+
+            <div class="mt-7 grid gap-4 md:grid-cols-3">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Student pain</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Students waste weeks searching randomly, copying broad topics, and presenting vague proposals without knowing what evidence supports or threatens the idea.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Supervisor pain</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Supervisors receive underdeveloped topics and must repeatedly ask for clearer scope, stronger literature, and more feasible methods.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Institution pain</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Departments lose time to weak proposal cycles, inconsistent guidance, and low-quality literature preparation.</p>
+              </div>
+            </div>
+
+            <div class="mt-7 rounded-2xl border border-amber/30 bg-amber/10 p-5 print-card">
+              <h3 class="text-lg font-semibold text-amber print-accent">Core insight</h3>
+              <p class="mt-3 text-sm leading-7 text-soft print-muted">
+                The hard part is not only finding papers. The hard part is converting papers into a decision: proceed, narrow, redesign, broaden search, read specific papers, or explore a better pivot. ResearchLens is built around that decision layer.
+              </p>
+            </div>
+          </section>
+
+          <section id="how-it-works" class="page-break print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">3. System Workflow</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">How ResearchLens works</h2>
+            <p class="mt-5 text-base leading-8 text-soft print-muted">
+              ResearchLens combines deterministic retrieval, ranking, scoring, and structured synthesis. The product is designed so that important scores and evidence boundaries are computed by code, while language models are used for explanation and packaging.
+            </p>
+
+            <div class="mt-8 space-y-4">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <div class="flex gap-4">
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</span>
+                  <div>
+                    <h3 class="font-semibold text-ink print-title">User submits a research idea</h3>
+                    <p class="mt-2 text-sm leading-7 text-muted print-muted">The user enters a thesis idea, field, academic level, language, mode, and evidence scope. The system treats the input as a research question candidate, not as a final topic.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <div class="flex gap-4">
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</span>
+                  <div>
+                    <h3 class="font-semibold text-ink print-title">Query expansion and faceted retrieval</h3>
+                    <p class="mt-2 text-sm leading-7 text-muted print-muted">ResearchLens expands the idea into multiple search queries and detects facets such as domain, problem, method, language context, intervention, and geography. Retrieval is then performed across supported scholarly metadata sources.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <div class="flex gap-4">
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</span>
+                  <div>
+                    <h3 class="font-semibold text-ink print-title">Deduplication and ranking</h3>
+                    <p class="mt-2 text-sm leading-7 text-muted print-muted">Papers are normalized by DOI, title, source identifiers, and metadata. The system ranks papers by relevance and records why each paper appears, including matched and missing facets.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <div class="flex gap-4">
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">4</span>
+                  <div>
+                    <h3 class="font-semibold text-ink print-title">Gap and sanity scoring</h3>
+                    <p class="mt-2 text-sm leading-7 text-muted print-muted">The system computes a gap matrix and Research Sanity Matrix. It scores novelty potential, evidence strength, feasibility, supervisor fit, claim risk, and overall readiness.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <div class="flex gap-4">
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">5</span>
+                  <div>
+                    <h3 class="font-semibold text-ink print-title">Decision packaging</h3>
+                    <p class="mt-2 text-sm leading-7 text-muted print-muted">The result is turned into a Decision Hub, approval packet, supervisor note, pivots, research mindmap, evidence stream, publication fit, and funding fit.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="technology" class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">4. Technical Architecture</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">What ResearchLens uses</h2>
+
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="text-lg font-semibold text-ink print-title">Application stack</h3>
+                <ul class="mt-4 space-y-2 text-sm leading-6 text-muted print-muted">
+                  <li>Next.js App Router for frontend and API routes.</li>
+                  <li>React and TypeScript for typed UI and domain logic.</li>
+                  <li>Tailwind CSS for interface styling.</li>
+                  <li>Session and browser storage for v1 report state.</li>
+                  <li>Optional Supabase support for faculty directory persistence.</li>
+                </ul>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="text-lg font-semibold text-ink print-title">AI and retrieval</h3>
+                <ul class="mt-4 space-y-2 text-sm leading-6 text-muted print-muted">
+                  <li>Gemini or Vertex AI for synthesis, copilot, query support, and summaries.</li>
+                  <li>OpenAlex for broad scholarly metadata and venue/source enrichment.</li>
+                  <li>Semantic Scholar for paper metadata and citation context.</li>
+                  <li>DataCite, arXiv, CORE, Europe PMC, PubMed, Crossref, and Unpaywall paths where configured.</li>
+                  <li>DOAJ and OpenAlex source metadata for publication targeting verification.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="mt-7 overflow-hidden rounded-2xl border border-line print-card">
+              <table class="w-full border-collapse text-left text-sm">
+                <thead class="bg-panel2 text-xs uppercase tracking-[0.16em] text-muted print-muted">
+                  <tr>
+                    <th class="border-b border-line px-4 py-3">Layer</th>
+                    <th class="border-b border-line px-4 py-3">Purpose</th>
+                    <th class="border-b border-line px-4 py-3">Output</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line text-muted print-muted">
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Retrieval</td>
+                    <td class="px-4 py-4">Find related scholarly records from multiple sources.</td>
+                    <td class="px-4 py-4">Deduplicated ranked papers and source diagnostics.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Evaluation</td>
+                    <td class="px-4 py-4">Measure novelty risk, evidence, feasibility, and fit.</td>
+                    <td class="px-4 py-4">Sanity Matrix, gap matrix, decision verdict.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Synthesis</td>
+                    <td class="px-4 py-4">Translate evidence into student and supervisor language.</td>
+                    <td class="px-4 py-4">Approval packet, supervisor note, pivots, next actions.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Workspace</td>
+                    <td class="px-4 py-4">Allow deeper investigation and organization.</td>
+                    <td class="px-4 py-4">Mindmap, lineage canvas, paper reader, copilot, research fit.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">5. Product Modules</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">Main features</h2>
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Decision Hub</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">The default results view. It shows verdict, novelty, evidence, risk, next best action, and the approval packet.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Approval Packet</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">A copyable supervisor-facing document with topic direction, evidence, risks, questions, and next steps.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Research Sanity Matrix</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">A deterministic quality-control layer that evaluates novelty potential, evidence strength, feasibility, supervisor fit, and claim risk.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Evidence Stream</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">Inspectable ranked papers with access labels, source metadata, DOI signals, and relevance context.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Thesis Mindmap</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">A visual workspace that decomposes the idea into topic, method, population, geography, evidence, risks, and pivots.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Paper Lineage</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">A Connected Papers-style graph for prior works, derivative works, closest neighbors, novelty threats, and method sources.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Research Fit</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">A publication and funding readiness surface with journal targets, route recommendations, fundability score, aims, and grant abstract.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Research Copilot</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">A workspace assistant that answers questions using selected card context, thesis idea, notes, papers, sanity matrix, and evidence boundaries.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="customers" class="page-break print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">6. Customers</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">Primary customers and users</h2>
+
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-green print-accent">Primary user</p>
+                <h3 class="mt-3 text-xl font-semibold text-ink print-title">Beginner thesis students</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Undergraduate, masters, and early PhD students who need to transform a broad idea into a defensible topic, choose a method, find papers, and prepare supervisor communication.</p>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-green print-accent">Primary buyer</p>
+                <h3 class="mt-3 text-xl font-semibold text-ink print-title">Universities and departments</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Academic departments, writing centers, research-methods courses, and thesis coordination teams that need scalable support for proposal quality.</p>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-green print-accent">Secondary user</p>
+                <h3 class="mt-3 text-xl font-semibold text-ink print-title">Supervisors and faculty</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Faculty members who want a faster way to evaluate student topic readiness, evidence coverage, and likely supervision burden.</p>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-green print-accent">Institutional user</p>
+                <h3 class="mt-3 text-xl font-semibold text-ink print-title">Research offices and libraries</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Teams that support literature discovery, proposal development, grant readiness, academic writing, and research training.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="business" class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">7. Business Plan</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">Business model and incentive structure</h2>
+            <p class="mt-5 text-base leading-8 text-soft print-muted">
+              ResearchLens has product potential because it targets an expensive, repeated academic workflow: thesis topic approval and early proposal development. Students need help, supervisors need better-prepared submissions, and institutions need scalable quality control.
+            </p>
+
+            <div class="mt-7 grid gap-4 md:grid-cols-3">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">B2C student subscription</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Low-cost monthly access for students preparing thesis proposals, literature reviews, or supervisor meetings.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">B2B university license</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Department, faculty, or campus license for guided proposal support, research methods courses, and writing centers.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Research office toolkit</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Advanced workspace for faculty, grants, publication route planning, collaborator discovery, and proposal quality checks.</p>
+              </div>
+            </div>
+
+            <div class="mt-7 overflow-hidden rounded-2xl border border-line print-card">
+              <table class="w-full border-collapse text-left text-sm">
+                <thead class="bg-panel2 text-xs uppercase tracking-[0.16em] text-muted print-muted">
+                  <tr>
+                    <th class="border-b border-line px-4 py-3">Plan</th>
+                    <th class="border-b border-line px-4 py-3">Customer</th>
+                    <th class="border-b border-line px-4 py-3">Value</th>
+                    <th class="border-b border-line px-4 py-3">Possible pricing logic</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line text-muted print-muted">
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Free / trial</td>
+                    <td class="px-4 py-4">Students</td>
+                    <td class="px-4 py-4">Limited scans, basic verdict, sample packet.</td>
+                    <td class="px-4 py-4">Lead generation and proof of value.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Student Pro</td>
+                    <td class="px-4 py-4">Individual students</td>
+                    <td class="px-4 py-4">More scans, saved reports, copilot, export, deeper evidence.</td>
+                    <td class="px-4 py-4">Affordable monthly or semester pricing.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Department</td>
+                    <td class="px-4 py-4">Academic programs</td>
+                    <td class="px-4 py-4">Cohort dashboards, proposal support, supervisor-ready outputs.</td>
+                    <td class="px-4 py-4">Seat or cohort-based pricing.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Institution</td>
+                    <td class="px-4 py-4">Universities</td>
+                    <td class="px-4 py-4">Research support infrastructure, analytics, integrations.</td>
+                    <td class="px-4 py-4">Annual license and support contract.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-7 rounded-2xl border border-cyan/30 bg-cyan/10 p-5 print-card">
+              <h3 class="text-lg font-semibold text-cyan print-accent">Incentive alignment</h3>
+              <p class="mt-3 text-sm leading-7 text-soft print-muted">
+                Students receive faster clarity and stronger supervisor material. Supervisors receive better-prepared proposals. Departments reduce repeated correction cycles. Libraries and research offices gain a practical tool for evidence literacy and responsible AI-supported research preparation.
+              </p>
+            </div>
+          </section>
+
+          <section id="why-it-works" class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">8. Defensibility</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">Why ResearchLens works</h2>
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">It is evidence-first</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">The product starts with retrieved scholarly metadata and ranked papers before generating conclusions. This reduces generic advice and forces outputs to be grounded in actual literature signals.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">It is decision-focused</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">The app does not stop at search. It turns evidence into verdicts, blockers, next actions, supervisor questions, and approval-ready text.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">It uses deterministic guardrails</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Novelty, evidence, risk, fit, and retrieval diagnostics are computed by local scoring logic. LLM synthesis is used to explain and package, not to silently decide everything.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">It supports recursive refinement</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Pivots, mindmaps, and lineage views help users move from a broad idea to a sharper contribution without starting from zero each time.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">9. Savings and Improvements</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">What ResearchLens improves and saves</h2>
+            <div class="mt-7 grid gap-4 md:grid-cols-3">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-2xl font-semibold text-cyan print-accent">Time</p>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Reduces random searching, weak reading lists, and repeated topic rewrites before supervisor meetings.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-2xl font-semibold text-green print-accent">Quality</p>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Improves proposal clarity, evidence boundaries, novelty defense, and method feasibility.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <p class="text-2xl font-semibold text-amber print-accent">Confidence</p>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Helps students understand what to say, what to read, what to fix, and what not to overclaim.</p>
+              </div>
+            </div>
+
+            <div class="mt-7 rounded-2xl border border-line bg-panel2 p-5 print-card">
+              <h3 class="text-lg font-semibold text-ink print-title">Operational savings</h3>
+              <ul class="mt-4 grid gap-3 text-sm leading-7 text-muted print-muted md:grid-cols-2">
+                <li>Fewer low-quality topic approval attempts.</li>
+                <li>Faster identification of crowded research areas.</li>
+                <li>Clearer reading priorities for students.</li>
+                <li>Better prepared supervisor conversations.</li>
+                <li>More consistent proposal guidance across cohorts.</li>
+                <li>Improved evidence literacy and responsible AI use.</li>
+              </ul>
+            </div>
+          </section>
+
+          <section id="innovation" class="page-break print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">10. Innovation</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">What kind of innovation ResearchLens represents</h2>
+            <p class="mt-5 text-base leading-8 text-soft print-muted">
+              ResearchLens is not primarily a new paper search engine. Its innovation is in the workflow layer around academic decision-making. It combines retrieval, quality scoring, visual reasoning, full-text boundaries, publication fit, funding fit, and supervisor communication into one coherent thesis approval flow.
+            </p>
+
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Workflow innovation</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">The system turns a research idea into a sequence of academic decisions instead of a flat list of search results.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Evaluation innovation</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">The Research Sanity Matrix gives students a structured way to reason about novelty, evidence, feasibility, and claim risk.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Pedagogical innovation</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">The product teaches students how to think like reviewers and supervisors by showing what evidence supports or weakens their idea.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Product innovation</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">It connects thesis approval, literature discovery, supervisor communication, publication targeting, and funding preparation in one system.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">11. Competitive Position</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">How ResearchLens differs from alternatives</h2>
+            <div class="mt-7 overflow-hidden rounded-2xl border border-line print-card">
+              <table class="w-full border-collapse text-left text-sm">
+                <thead class="bg-panel2 text-xs uppercase tracking-[0.16em] text-muted print-muted">
+                  <tr>
+                    <th class="border-b border-line px-4 py-3">Category</th>
+                    <th class="border-b border-line px-4 py-3">Typical strength</th>
+                    <th class="border-b border-line px-4 py-3">ResearchLens difference</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line text-muted print-muted">
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Academic search engines</td>
+                    <td class="px-4 py-4">Large paper corpus and metadata discovery.</td>
+                    <td class="px-4 py-4">Adds thesis verdicts, risks, pivots, approval packets, and fit decisions.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Literature review tools</td>
+                    <td class="px-4 py-4">Paper summaries, notes, citation management.</td>
+                    <td class="px-4 py-4">Focuses earlier in the workflow: idea approval, novelty defense, and scope narrowing.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">General AI chatbots</td>
+                    <td class="px-4 py-4">Flexible conversation and writing support.</td>
+                    <td class="px-4 py-4">Grounds output in retrieved evidence and deterministic research-quality matrices.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-4 font-semibold text-ink print-title">Citation graph tools</td>
+                    <td class="px-4 py-4">Visual maps of related papers and citation neighborhoods.</td>
+                    <td class="px-4 py-4">Connects lineage to thesis approval, novelty threats, reading route, and supervisor defense.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">12. Responsible Use</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">Trust, safety, and academic integrity</h2>
+            <p class="mt-5 text-base leading-8 text-soft print-muted">
+              ResearchLens should be positioned as a research preparation and decision-support tool, not as an automated thesis writer. Its strongest long-term value depends on clear evidence boundaries, citation honesty, and responsible AI use.
+            </p>
+
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Evidence boundaries</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Claims should be labeled as full-text verified, abstract-supported, metadata-only, or requiring manual reading.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">No fake certainty</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">The product should never claim complete novelty or complete literature coverage. It should explain limitations clearly.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">No paywall bypass</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">Full-text access should rely on legal open-access links, official APIs, or user-supplied PDFs.</p>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Student ownership</h3>
+                <p class="mt-3 text-sm leading-7 text-muted print-muted">The tool should help students understand and defend their topic, not replace their reading, thinking, or writing responsibility.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="roadmap" class="page-break print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">13. Roadmap</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">Recommended development roadmap</h2>
+
+            <div class="mt-7 space-y-4">
+              <div class="avoid-break rounded-2xl border border-green/30 bg-green/10 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-green print-accent">Phase 1</p>
+                <h3 class="mt-2 text-lg font-semibold text-ink print-title">Approval MVP stabilization</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">Make the Decision Hub, retrieval diagnostics, evidence stream, sanity matrix, and approval packet reliable, minimal, and beginner-friendly.</p>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-cyan/30 bg-cyan/10 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-cyan print-accent">Phase 2</p>
+                <h3 class="mt-2 text-lg font-semibold text-ink print-title">Evidence trust and full-text reader</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">Add legal full-text access detection, user PDF upload, extracted section notes, and evidence labels for abstract-only versus full-text verified claims.</p>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-accent/30 bg-accent/10 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-violet-200 print-accent">Phase 3</p>
+                <h3 class="mt-2 text-lg font-semibold text-ink print-title">Workspace intelligence</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">Improve mindmap, lineage canvas, contextual copilot, research notes, reading routes, and supervisor defense output.</p>
+              </div>
+
+              <div class="avoid-break rounded-2xl border border-amber/30 bg-amber/10 p-5 print-card">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-amber print-accent">Phase 4</p>
+                <h3 class="mt-2 text-lg font-semibold text-ink print-title">Institution and business layer</h3>
+                <p class="mt-2 text-sm leading-7 text-muted print-muted">Add accounts, saved reports, department dashboards, cohort analytics, integrations, export workflows, and institutional licensing readiness.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">14. Success Metrics</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">How to measure whether ResearchLens is working</h2>
+            <div class="mt-7 grid gap-4 md:grid-cols-2">
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Student outcomes</h3>
+                <ul class="mt-4 space-y-2 text-sm leading-6 text-muted print-muted">
+                  <li>Time from first idea to supervisor-ready packet.</li>
+                  <li>Percentage of users who narrow or improve their topic after report review.</li>
+                  <li>Approval packet copy/export rate.</li>
+                  <li>Return rate for pivot exploration and evidence reading.</li>
+                </ul>
+              </div>
+              <div class="avoid-break rounded-2xl border border-line bg-panel2 p-5 print-card">
+                <h3 class="font-semibold text-ink print-title">Institution outcomes</h3>
+                <ul class="mt-4 space-y-2 text-sm leading-6 text-muted print-muted">
+                  <li>Reduction in weak or vague proposal submissions.</li>
+                  <li>Supervisor satisfaction with student preparedness.</li>
+                  <li>Improvement in literature review quality.</li>
+                  <li>Usage across research methods courses or thesis cohorts.</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="print-section rounded-3xl border border-line bg-panel/80 p-7 print-card">
+            <p class="section-label text-xs font-bold uppercase text-cyan print-accent">15. Final Positioning</p>
+            <h2 class="mt-3 text-3xl font-semibold text-ink print-title">The clearest product statement</h2>
+            <blockquote class="mt-6 rounded-2xl border-l-4 border-accent bg-panel2 p-6 text-xl font-semibold leading-9 text-ink print-card print-title">
+              ResearchLens helps thesis students turn uncertain research ideas into supervisor-ready, evidence-backed thesis directions.
+            </blockquote>
+            <p class="mt-6 text-base leading-8 text-soft print-muted">
+              The strongest version of ResearchLens is not a cluttered all-purpose research dashboard. It is a focused academic decision system. Its purpose is to help a student understand whether an idea is defensible, what evidence supports it, what threatens it, how to narrow it, and how to discuss it with a supervisor.
+            </p>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

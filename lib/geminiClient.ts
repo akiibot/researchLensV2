@@ -2,7 +2,9 @@
  * Shared Gemini client.
  *
  * Supports GOOGLE_API_KEY for the Gemini API and
- * GOOGLE_APPLICATION_CREDENTIALS for Vertex AI service-account auth.
+ * GOOGLE_APPLICATION_CREDENTIALS for local Vertex AI service-account auth,
+ * or GOOGLE_APPLICATION_CREDENTIALS_JSON / GOOGLE_SERVICE_ACCOUNT_JSON in
+ * hosted environments where credential files are not available.
  */
 
 import { createSign } from 'crypto';
@@ -72,6 +74,24 @@ function base64Url(input: string): string {
 }
 
 function loadServiceAccount(): ServiceAccountCredentials | null {
+  const credentialsJson =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (credentialsJson) {
+    const parsed = JSON.parse(credentialsJson) as Partial<ServiceAccountCredentials>;
+
+    if (
+      !parsed.client_email ||
+      !parsed.private_key ||
+      !parsed.project_id ||
+      !parsed.token_uri
+    ) {
+      throw new Error('Google service account credentials are incomplete');
+    }
+
+    return parsed as ServiceAccountCredentials;
+  }
+
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (!credentialsPath) return null;
 
@@ -211,6 +231,8 @@ export function hasGeminiCredentials(): boolean {
   const apiKey = process.env.GOOGLE_API_KEY;
   return Boolean(
     (apiKey && apiKey !== 'your_key_here') ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+      process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
       process.env.GOOGLE_APPLICATION_CREDENTIALS
   );
 }
