@@ -26,6 +26,7 @@ interface ResultsPanelProps {
   result: AnalysisResult;
   queries?: string[];
   mode?: AppMode;
+  onRefine?: () => void;
   onExplorePivot?: (pivot: Pivot) => void;
   onExploreMindmapNode?: (
     node: ThesisMindmapNode,
@@ -74,7 +75,7 @@ const TOOL_CONFIG: Array<{
     id: 'report',
     label: 'Report',
     shortLabel: 'Report',
-    icon: 'Home',
+    icon: 'Report',
     purpose: 'See the verdict, key signals, and the supervisor-ready packet.',
     action: 'Start here for the overall decision and a copyable summary.',
   },
@@ -82,7 +83,7 @@ const TOOL_CONFIG: Array<{
     id: 'canvas',
     label: 'Canvas',
     shortLabel: 'Canvas',
-    icon: 'Map',
+    icon: 'Canvas',
     purpose: 'Organize the thesis, read papers, ask Copilot, and trace lineage — all in one workspace.',
     action: 'Open the visual map to organize topic, method, risks, and pivots. Includes the paper reader, Copilot chat, and lineage graph.',
   },
@@ -90,15 +91,15 @@ const TOOL_CONFIG: Array<{
     id: 'evidence',
     label: 'Evidence',
     shortLabel: 'Evidence',
-    icon: 'Papers',
+    icon: 'Evidence',
     purpose: 'Check the papers behind the verdict.',
     action: 'Use this before making strong novelty claims.',
   },
   {
     id: 'pivots',
     label: 'Pivots',
-    shortLabel: 'Pivots',
-    icon: 'Moves',
+    shortLabel: 'Pivot',
+    icon: 'Pivot',
     purpose: 'Find stronger thesis directions from the gaps.',
     action: 'Use this when the current topic is promising but too broad.',
   },
@@ -111,18 +112,10 @@ const TOOL_CONFIG: Array<{
     action: 'Use this to turn the topic into grant, journal, or conference decisions.',
   },
   {
-    id: 'diagnostics',
-    label: 'Diagnostics',
-    shortLabel: 'Audit',
-    icon: 'Audit',
-    purpose: 'Inspect retrieval, source coverage, and technical trust signals.',
-    action: 'Use this when results look off or you need to explain search limitations.',
-  },
-  {
     id: 'export',
     label: 'Export',
     shortLabel: 'Export',
-    icon: 'Copy',
+    icon: 'Export',
     purpose: 'Copy supervisor-ready notes and report assets.',
     action: 'Use this when you are ready to send or save the topic direction.',
   },
@@ -177,14 +170,85 @@ function DecisionSignalCell({
 }) {
   const colors = getColorClasses(type, value);
   return (
-    <div className="p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+    <div className={`${colors.bg} p-4`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
         {label}
       </p>
       <p className={`mt-2 text-2xl font-bold uppercase tracking-wide ${colors.text}`}>
         {value}
       </p>
     </div>
+  );
+}
+
+function ToolIcon({ icon }: { icon: string }) {
+  const className = 'h-5 w-5 text-white';
+
+  if (icon === 'Regenerate') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 12a9 9 0 0 1 15.2-6.5" />
+        <path d="M18 2v4h-4" />
+        <path d="M21 12a9 9 0 0 1-15.2 6.5" />
+        <path d="M6 22v-4h4" />
+      </svg>
+    );
+  }
+
+  if (icon === 'Report') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M7 3h7.8L20 8.2V18a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Zm7 1.8V9h4.2L14 4.8ZM8 12.2a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2H8Zm0 4a1 1 0 1 0 0 2h5.5a1 1 0 1 0 0-2H8Z" />
+      </svg>
+    );
+  }
+
+  if (icon === 'Canvas') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="3" y="6" width="18" height="12" rx="3" />
+        <rect x="6" y="9" width="3" height="2" rx=".7" fill="#17132b" />
+        <rect x="10.5" y="9" width="7.5" height="2" rx=".7" fill="#17132b" />
+        <rect x="6" y="13" width="12" height="2" rx=".7" fill="#17132b" />
+      </svg>
+    );
+  }
+
+  if (icon === 'Evidence') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="10" cy="10" r="5.5" fill="currentColor" stroke="none" />
+        <path d="m14.5 14.5 5 5" />
+      </svg>
+    );
+  }
+
+  if (icon === 'Pivot') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 3a7 7 0 0 0-4 12.74V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.26A7 7 0 0 0 12 3Z" />
+      </svg>
+    );
+  }
+
+  if (icon === 'Fit') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="4" />
+        <rect x="7" y="13" width="2.4" height="4" rx="1" fill="#17132b" />
+        <rect x="10.8" y="9" width="2.4" height="8" rx="1" fill="#17132b" />
+        <rect x="14.6" y="6.5" width="2.4" height="10.5" rx="1" fill="#17132b" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 4v6H4" />
+      <path d="M16 20v-6h4" />
+      <path d="M4 10a8 8 0 0 1 14-4" />
+      <path d="M20 14a8 8 0 0 1-14 4" />
+    </svg>
   );
 }
 
@@ -211,24 +275,46 @@ function SectionShell({
 function ToolDock({
   activeTool,
   onSelectTool,
+  onRefine,
   density,
 }: {
   activeTool: ResultTool | null;
   onSelectTool: (tool: ResultTool) => void;
+  onRefine?: () => void;
   density: DensityLevel;
 }) {
   return (
-    <section className="surface-card p-4 lg:sticky lg:top-4">
-      <div className="mb-4 flex flex-col gap-1">
-        <p className="text-xs uppercase tracking-wide text-accent-base font-semibold">
-          Open only what you need
-        </p>
-        <h3 className="text-lg font-semibold text-text-primary">
-          Research toolkit
-        </h3>
-        <p className="text-xs capitalize text-text-tertiary">{density} view</p>
-      </div>
-      <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
+    <section className="group/rail relative z-30 w-full lg:fixed lg:left-0 lg:top-0 lg:z-[70] lg:h-dvh lg:w-[68px]">
+      <div className="overflow-hidden rounded-3xl border border-border-subtle bg-bg-secondary p-3 shadow-2xl shadow-black/20 transition-all duration-300 ease-out lg:h-dvh lg:w-[68px] lg:rounded-l-none lg:rounded-r-[28px] lg:border-l-0 lg:hover:w-[220px]">
+        <div className="mb-7 flex min-w-[190px] items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#493f82] text-3xl font-black leading-none text-white">
+            <span className="-mt-1 font-serif">r</span>
+          </div>
+          <div className="overflow-hidden whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover/rail:opacity-100">
+            <p className="text-base font-medium text-white">
+              Research <span className="text-[#8878ff]">Lens</span>
+            </p>
+            <p className="sr-only text-xs capitalize text-text-tertiary">{density} view</p>
+          </div>
+        </div>
+
+        {onRefine && (
+          <button
+            type="button"
+            onClick={onRefine}
+            className="mb-2 flex min-h-[44px] min-w-[190px] items-center gap-4 rounded-xl px-2 text-left text-text-secondary transition-colors hover:bg-accent-muted hover:text-white"
+            title="Re-Generate"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+              <ToolIcon icon="Regenerate" />
+            </span>
+            <span className="whitespace-nowrap text-sm opacity-0 transition-opacity duration-200 group-hover/rail:opacity-100">
+              Re-Generate
+            </span>
+          </button>
+        )}
+
+        <nav className="flex gap-2 overflow-x-auto lg:min-w-[190px] lg:flex-col lg:overflow-visible">
         {TOOL_CONFIG.map((tool) => (
           <button
             key={tool.id}
@@ -236,24 +322,22 @@ function ToolDock({
             onClick={() => onSelectTool(tool.id)}
             title={tool.purpose}
             aria-current={activeTool === tool.id ? 'true' : undefined}
-            className={`min-h-[72px] w-40 shrink-0 rounded-xl border px-3 py-3 text-left transition-all lg:w-full ${
+            className={`flex min-h-[44px] shrink-0 items-center gap-4 rounded-none px-2 text-left transition-colors lg:w-full ${
               activeTool === tool.id
-                ? 'border-accent-base/60 bg-accent-base/15 text-text-primary shadow-lg shadow-accent-base/10'
-                : 'border-border-subtle bg-bg-secondary/70 text-text-secondary hover:border-border-strong hover:bg-bg-tertiary hover:text-text-primary'
+                ? 'bg-accent-muted text-white'
+                : 'text-text-secondary hover:bg-accent-muted hover:text-white'
             }`}
           >
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-accent-text">
-              {tool.icon}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+              <ToolIcon icon={tool.icon} />
             </span>
-            <span className="mt-1 block text-sm font-semibold">
+            <span className="whitespace-nowrap text-sm opacity-0 transition-opacity duration-200 group-hover/rail:opacity-100">
               {tool.shortLabel}
-            </span>
-            <span className="mt-1 block text-[11px] leading-snug text-text-tertiary">
-              {tool.purpose}
             </span>
           </button>
         ))}
       </nav>
+      </div>
     </section>
   );
 }
@@ -704,17 +788,14 @@ function ToolPanel({
           </div>
         </section>
 
-        <ApprovalPacketCard
-          packetText={packetText}
-          copied={copied}
-          onCopy={onCopyPacket}
-          topPapers={result.topRelatedPapers.slice(0, 3)}
-          supervisorQuestions={buildSupervisorQuestions(topGaps)}
-          verdict={sanity?.verdict || `${result.noveltySignal} novelty signal`}
-          nextAction={topAction}
-          risks={topGaps}
-          mode={mode}
-        />
+        {result.sanityMatrix && <ResearchSanityPanel matrix={result.sanityMatrix} />}
+
+        <SectionShell
+          title="Key Gaps"
+          helper="The gaps ResearchLens thinks matter most for thesis narrowing. Click a gap to see the supporting evidence."
+        >
+          <GapMatrix gaps={topGaps} />
+        </SectionShell>
       </div>
     );
   }
@@ -925,8 +1006,18 @@ function ToolPanel({
 
   return (
     <div className="space-y-5">
-      {/* The approval packet is already shown unconditionally above the
-          tool dock, so it isn't repeated here for the default/export view. */}
+      <ApprovalPacketCard
+        packetText={packetText}
+        copied={copied}
+        onCopy={onCopyPacket}
+        topPapers={result.topRelatedPapers.slice(0, 3)}
+        supervisorQuestions={buildSupervisorQuestions(topGaps)}
+        verdict={sanity?.verdict || `${result.noveltySignal} novelty signal`}
+        nextAction={topAction}
+        risks={topGaps}
+        mode={mode}
+      />
+
       {result.supervisorNote && (
         <SectionShell title={mode === 'faculty' ? 'Reviewer Note' : 'Supervisor Note'}>
           <div className="surface-card p-5">
@@ -1066,6 +1157,7 @@ export default function ResultsPanel({
   result,
   queries,
   mode,
+  onRefine,
   onExplorePivot,
   onExploreMindmapNode,
 }: ResultsPanelProps) {
@@ -1218,10 +1310,11 @@ export default function ResultsPanel({
           generic fallback template rather than a tailored AI-generated analysis.
         </div>
       )}
-      <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-5 lg:block lg:pl-[236px]">
         <ToolDock
           activeTool={activeTool}
           onSelectTool={selectTool}
+          onRefine={onRefine}
           density={densityLevel}
         />
 

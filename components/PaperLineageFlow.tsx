@@ -2,10 +2,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  applyNodeChanges,
   Edge,
   Handle,
   MarkerType,
   Node,
+  OnNodeDrag,
+  OnNodesChange,
   Position,
   ReactFlow,
   ReactFlowProvider,
@@ -18,6 +21,7 @@ import {
   EvidenceLineageNode,
   EvidenceLineageNodeRole,
 } from '@/lib/types';
+import { resolveFlowCollisions } from '@/lib/flowCollision';
 
 type LineageViewportCommand = { id: number; type: 'fit' | 'reset' };
 
@@ -32,9 +36,14 @@ interface PaperLineageFlowProps {
 }
 
 interface LineageNodeData extends Record<string, unknown> {
-  node: EvidenceLineageNode;
+  node?: EvidenceLineageNode;
+  groupRole?: EvidenceLineageNodeRole;
+  groupCount?: number;
   selected?: boolean;
   onSelectNode: (node: EvidenceLineageNode) => void;
+  expanded?: boolean;
+  expandable?: boolean;
+  onToggleExpand?: () => void;
 }
 
 const ROLE_LABELS: Record<EvidenceLineageNodeRole, string> = {
@@ -82,6 +91,13 @@ const ROLE_LIMITS: Record<EvidenceLineageNodeRole, number> = {
   method_source: 5,
 };
 
+const NODE_SIZE = {
+  origin: { width: 280, height: 118 },
+  group: { width: 230, height: 92 },
+  selected: { width: 238, height: 118 },
+  paper: { width: 210, height: 88 },
+};
+
 const ROLE_LANE_LABELS: Array<{
   role: EvidenceLineageNodeRole;
   label: string;
@@ -127,23 +143,30 @@ function shortText(text: string, limit: number) {
 
 function LineageCard({ data }: { data: LineageNodeData }) {
   const { node, selected, onSelectNode } = data;
-  const color = ROLE_COLORS[node.role];
-  const isThreat = node.role === 'novelty_threat';
-  const isOrigin = node.role === 'origin';
+  const role = node?.role || data.groupRole || 'neighboring';
+  const color = ROLE_COLORS[role];
+  const isGroup = !node;
+  const isThreat = node?.role === 'novelty_threat';
+  const isOrigin = node?.role === 'origin';
   const citationLabel =
-    node.paper.citationCount > 999
+    node && node.paper.citationCount > 999
       ? '999+ cites'
-      : node.paper.citationCount > 0
+      : node && node.paper.citationCount > 0
         ? `${node.paper.citationCount} cites`
         : null;
 
   return (
     <button
       type="button"
-      onClick={() => onSelectNode(node)}
+      onClick={() => {
+        if (node) onSelectNode(node);
+        else data.onToggleExpand?.();
+      }}
       className={`relative cursor-move rounded-xl border text-left transition-colors focus:outline-none focus:ring-2 focus:ring-accent-base/50 ${
         isOrigin
           ? 'w-[280px] min-h-[118px] px-4 py-3'
+          : isGroup
+            ? 'w-[230px] min-h-[92px] px-3.5 py-3'
           : selected
             ? 'w-[238px] min-h-[118px] px-3.5 py-3'
             : 'w-[210px] min-h-[88px] px-3 py-2.5'
@@ -157,6 +180,28 @@ function LineageCard({ data }: { data: LineageNodeData }) {
             : '0 10px 22px rgba(0, 0, 0, 0.14)',
       }}
     >
+      {data.expandable && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onToggleExpand?.();
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            event.stopPropagation();
+            data.onToggleExpand?.();
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="absolute -right-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-accent-base/55 bg-bg-secondary text-lg font-semibold leading-none text-accent-text shadow-lg shadow-black/30 transition-colors hover:bg-accent-muted hover:text-white"
+          aria-label={data.expanded ? 'Collapse group' : 'Expand group'}
+          title={data.expanded ? 'Collapse' : 'Expand'}
+        >
+          {data.expanded ? '−' : '+'}
+        </span>
+      )}
       {(['left', 'right', 'top', 'bottom'] as const).map((side) => (
         <React.Fragment key={side}>
           <Handle
@@ -197,7 +242,9 @@ function LineageCard({ data }: { data: LineageNodeData }) {
       )}
       <div className="flex items-start justify-between gap-2">
         <p className={`${isOrigin ? 'text-sm' : 'text-xs'} font-semibold leading-snug text-text-primary`}>
-          {shortText(node.paper.title, selected || isOrigin ? 92 : 58)}
+          {node
+            ? shortText(node.paper.title, selected || isOrigin ? 92 : 58)
+            : ROLE_LABELS[role]}
         </p>
         {citationLabel && (
           <span
@@ -216,18 +263,29 @@ function LineageCard({ data }: { data: LineageNodeData }) {
           className="rounded-md border px-1.5 py-0.5 text-[9px] font-medium"
           style={{ borderColor: `${color}66`, background: `${color}22`, color }}
         >
-          {ROLE_LABELS[node.role]}
+          {ROLE_LABELS[role]}
         </span>
-        <span className="text-[9px] uppercase tracking-wide text-text-tertiary">
-          {node.paper.year || 'n.d.'}
-        </span>
-        {node.similarityToIdea > 0 && (
+        {node ? (
+          <span className="text-[9px] uppercase tracking-wide text-text-tertiary">
+            {node.paper.year || 'n.d.'}
+          </span>
+        ) : (
+          <span className="text-[9px] uppercase tracking-wide text-text-tertiary">
+            {data.groupCount || 0} papers
+          </span>
+        )}
+        {node && node.similarityToIdea > 0 && (
           <span className="text-[9px] uppercase tracking-wide text-text-tertiary">
             {Math.round(node.similarityToIdea * 100)}% fit
           </span>
         )}
       </div>
-      {(selected || isOrigin) && (
+      {isGroup && (
+        <p className="mt-2 text-[10px] leading-relaxed text-text-tertiary">
+          Click + to reveal this publication group.
+        </p>
+      )}
+      {node && (selected || isOrigin) && (
         <p
           className="mt-2 text-[10px] leading-relaxed text-text-tertiary"
           style={{
@@ -248,67 +306,153 @@ const nodeTypes = {
   lineageCard: LineageCard,
 };
 
+function withNodeEntrance(nodes: Node<LineageNodeData>[]) {
+  return nodes.map((node, index) => ({
+    ...node,
+    className: `${node.className || ''} canvas-node-enter`.trim(),
+    style: {
+      ...node.style,
+      animationDelay: `${Math.min(index * 80, 640)}ms`,
+    },
+  }));
+}
+
 function buildLayout(
   graph: EvidenceLineageGraph,
   selectedNodeId: string | undefined,
   roleFilters: Set<EvidenceLineageNodeRole>,
   edgeFilters: Set<EvidenceLineageEdgeKind>,
-  onSelectNode: (node: EvidenceLineageNode) => void
+  onSelectNode: (node: EvidenceLineageNode) => void,
+  originExpanded: boolean,
+  expandedRoles: Set<EvidenceLineageNodeRole>,
+  onToggleOrigin: () => void,
+  onToggleRole: (role: EvidenceLineageNodeRole) => void
 ) {
-  const visibleNodes = graph.nodes.filter(
-    (node) => node.role === 'origin' || roleFilters.has(node.role)
-  );
-  const cappedVisibleNodes = (Object.keys(ROLE_LIMITS) as EvidenceLineageNodeRole[]).flatMap((role) =>
-    visibleNodes
-      .filter((node) => node.role === role)
-      .sort((a, b) => {
-        const left = a.role === 'novelty_threat' ? a.threatScore || 0 : a.similarityToIdea;
-        const right = b.role === 'novelty_threat' ? b.threatScore || 0 : b.similarityToIdea;
-        return right - left || (b.paper.citationCount || 0) - (a.paper.citationCount || 0);
-      })
-      .slice(0, ROLE_LIMITS[role])
-  );
-  const visibleNodeIds = new Set(cappedVisibleNodes.map((node) => node.id));
+  const origin =
+    graph.nodes.find((node) => node.role === 'origin') || graph.nodes[0];
+  const nodes: Node<LineageNodeData>[] = origin
+    ? [
+        {
+          id: origin.id,
+          type: 'lineageCard',
+          position: { x: ROLE_POSITIONS.origin.x, y: ROLE_POSITIONS.origin.y },
+          data: {
+            node: origin,
+            selected: selectedNodeId === origin.id,
+            onSelectNode,
+            expandable: true,
+            expanded: originExpanded,
+            onToggleExpand: onToggleOrigin,
+          },
+          draggable: true,
+        },
+      ]
+    : [];
+  const edges: Edge[] = [];
+  const visiblePaperIds = new Set<string>(origin ? [origin.id] : []);
   const roleIndexes = new Map<EvidenceLineageNodeRole, number>();
 
-  const nodes: Node<LineageNodeData>[] = cappedVisibleNodes.map((node) => {
-    const roleIndex = roleIndexes.get(node.role) || 0;
-    roleIndexes.set(node.role, roleIndex + 1);
-    const base = ROLE_POSITIONS[node.role];
-    const xOffset =
-      node.role === 'origin'
-        ? 0
-        : node.role === 'neighboring' || node.role === 'novelty_threat'
-          ? (roleIndex % 2) * 245
-          : 0;
-    const yOffset =
-      node.role === 'origin'
-        ? 0
-        : node.role === 'neighboring' || node.role === 'novelty_threat'
-          ? Math.floor(roleIndex / 2) * base.step
-          : roleIndex * base.step;
+  if (originExpanded && origin) {
+    (['foundational', 'derivative', 'neighboring', 'novelty_threat', 'method_source'] as EvidenceLineageNodeRole[])
+      .filter((role) => roleFilters.has(role))
+      .forEach((role) => {
+        const rolePapers = graph.nodes.filter((node) => node.role === role);
+        if (rolePapers.length === 0) return;
 
-    return {
-      id: node.id,
-      type: 'lineageCard',
-      position: {
-        x: base.x + xOffset,
-        y: base.y + yOffset,
-      },
-      data: {
-        node,
-        selected: selectedNodeId === node.id,
-        onSelectNode,
-      },
-      draggable: true,
-    };
-  });
+        const groupId = `group-${role}`;
+        const base = ROLE_POSITIONS[role];
+        nodes.push({
+          id: groupId,
+          type: 'lineageCard',
+          position: { x: base.x, y: base.y },
+          data: {
+            groupRole: role,
+            groupCount: rolePapers.length,
+            onSelectNode,
+            expandable: true,
+            expanded: expandedRoles.has(role),
+            onToggleExpand: () => onToggleRole(role),
+          },
+          draggable: true,
+        });
+        edges.push({
+          id: `${origin.id}-${groupId}`,
+          source: origin.id,
+          target: groupId,
+          type: 'smoothstep',
+          style: {
+            stroke: ROLE_COLORS[role],
+            strokeWidth: 1.5,
+            strokeDasharray: '6 6',
+            opacity: 0.42,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: ROLE_COLORS[role],
+            width: 12,
+            height: 12,
+          },
+        });
 
-  const edges: Edge[] = graph.edges
+        if (!expandedRoles.has(role)) return;
+
+        rolePapers
+          .sort((a, b) => {
+            const left = a.role === 'novelty_threat' ? a.threatScore || 0 : a.similarityToIdea;
+            const right = b.role === 'novelty_threat' ? b.threatScore || 0 : b.similarityToIdea;
+            return right - left || (b.paper.citationCount || 0) - (a.paper.citationCount || 0);
+          })
+          .slice(0, ROLE_LIMITS[role])
+          .forEach((node) => {
+            const roleIndex = roleIndexes.get(node.role) || 0;
+            roleIndexes.set(node.role, roleIndex + 1);
+            const xOffset =
+              node.role === 'neighboring' || node.role === 'novelty_threat'
+                ? ((roleIndex % 2) + 1) * 245
+                : node.role === 'foundational'
+                  ? -245
+                  : node.role === 'derivative'
+                    ? 245
+                    : (roleIndex % 2) * 245;
+            const yOffset =
+              node.role === 'neighboring' || node.role === 'novelty_threat'
+                ? Math.floor(roleIndex / 2) * base.step
+                : roleIndex * base.step;
+            nodes.push({
+              id: node.id,
+              type: 'lineageCard',
+              position: {
+                x: base.x + xOffset,
+                y: base.y + yOffset,
+              },
+              data: {
+                node,
+                selected: selectedNodeId === node.id,
+                onSelectNode,
+              },
+              draggable: true,
+            });
+            visiblePaperIds.add(node.id);
+            edges.push({
+              id: `${groupId}-${node.id}`,
+              source: groupId,
+              target: node.id,
+              type: 'smoothstep',
+              style: {
+                stroke: ROLE_COLORS[role],
+                strokeWidth: 1.4,
+                opacity: 0.36,
+              },
+            });
+          });
+      });
+  }
+
+  const relationEdges: Edge[] = graph.edges
     .filter(
       (edge) =>
-        visibleNodeIds.has(edge.source) &&
-        visibleNodeIds.has(edge.target) &&
+        visiblePaperIds.has(edge.source) &&
+        visiblePaperIds.has(edge.target) &&
         edgeFilters.has(edge.kind)
     )
     .map((edge) => {
@@ -350,7 +494,40 @@ function buildLayout(
       } satisfies Edge;
     });
 
-  return { nodes, edges };
+  const nodeWithBounds = nodes.map((node) => {
+    const isOrigin = node.data.node?.role === 'origin';
+    const isGroup = Boolean(node.data.groupRole);
+    const selected = Boolean(node.data.selected);
+    const size = isOrigin
+      ? NODE_SIZE.origin
+      : isGroup
+        ? NODE_SIZE.group
+        : selected
+          ? NODE_SIZE.selected
+          : NODE_SIZE.paper;
+    return {
+      ...node,
+      ...size,
+      role: isOrigin ? ('anchor' as const) : isGroup ? ('group' as const) : ('node' as const),
+      selected,
+      expanded: Boolean(node.data.expanded),
+    };
+  });
+
+  const resolvedNodes = resolveFlowCollisions(nodeWithBounds, {
+    gap: 34,
+    passes: 20,
+  }).map((node) => {
+    const { width, height, role, selected, expanded, ...cleaned } = node;
+    void width;
+    void height;
+    void role;
+    void selected;
+    void expanded;
+    return cleaned;
+  });
+
+  return { nodes: withNodeEntrance(resolvedNodes), edges: [...edges, ...relationEdges] };
 }
 
 function LineageViewport({
@@ -367,6 +544,10 @@ function LineageViewport({
   const [roleFilters, setRoleFilters] = useState<Set<EvidenceLineageNodeRole>>(
     () => new Set(['foundational', 'derivative', 'neighboring', 'novelty_threat', 'method_source'])
   );
+  const [originExpanded, setOriginExpanded] = useState(false);
+  const [expandedRoles, setExpandedRoles] = useState<Set<EvidenceLineageNodeRole>>(
+    () => new Set()
+  );
   const [edgeFilters, setEdgeFilters] = useState<Set<EvidenceLineageEdgeKind>>(
     () =>
       new Set([
@@ -378,20 +559,111 @@ function LineageViewport({
         'inferred_similarity',
       ])
   );
+  const toggleOrigin = useCallback(() => {
+    setOriginExpanded((current) => !current);
+  }, []);
+  const toggleRoleExpansion = useCallback((role: EvidenceLineageNodeRole) => {
+    setExpandedRoles((current) => {
+      const next = new Set(current);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
+  }, []);
   const computed = useMemo(
-    () => buildLayout(graph, selectedNodeId, roleFilters, edgeFilters, onSelectNode),
-    [edgeFilters, graph, onSelectNode, roleFilters, selectedNodeId]
+    () =>
+      buildLayout(
+        graph,
+        selectedNodeId,
+        roleFilters,
+        edgeFilters,
+        onSelectNode,
+        originExpanded,
+        expandedRoles,
+        toggleOrigin,
+        toggleRoleExpansion
+      ),
+    [
+      edgeFilters,
+      expandedRoles,
+      graph,
+      onSelectNode,
+      originExpanded,
+      roleFilters,
+      selectedNodeId,
+      toggleOrigin,
+      toggleRoleExpansion,
+    ]
   );
+  const [flowNodes, setFlowNodes] = useState<Node<LineageNodeData>[]>(computed.nodes);
   const { fitView } = useReactFlow<Node<LineageNodeData>>();
 
   const fitGraph = useCallback(() => {
-    fitView({ padding: 0.08, duration: 250 });
+    fitView({ padding: 0.08, duration: 420 });
   }, [fitView]);
 
   useEffect(() => {
+    queueMicrotask(() => {
+      setFlowNodes(computed.nodes);
+      fitGraph();
+    });
+  }, [computed.nodes, fitGraph]);
+
+  useEffect(() => {
     if (viewportCommand?.type === 'fit') fitGraph();
-    if (viewportCommand?.type === 'reset') fitGraph();
+    if (viewportCommand?.type === 'reset') {
+      queueMicrotask(() => {
+        setOriginExpanded(false);
+        setExpandedRoles(new Set());
+        fitGraph();
+      });
+    }
   }, [fitGraph, viewportCommand?.id, viewportCommand?.type]);
+
+  const onNodesChange: OnNodesChange<Node<LineageNodeData>> = useCallback((changes) => {
+    setFlowNodes((current) => applyNodeChanges(changes, current));
+  }, []);
+
+  const onNodeDragStop: OnNodeDrag<Node<LineageNodeData>> = useCallback(
+    (_event, draggedNode) => {
+      setFlowNodes((current) => {
+        const next = current.map((node) =>
+          node.id === draggedNode.id
+            ? { ...node, position: draggedNode.position }
+            : node
+        );
+        const bounded = next.map((node) => {
+          const isOrigin = node.data.node?.role === 'origin';
+          const isGroup = Boolean(node.data.groupRole);
+          const selected = Boolean(node.data.selected);
+          const size = isOrigin
+            ? NODE_SIZE.origin
+            : isGroup
+              ? NODE_SIZE.group
+              : selected
+                ? NODE_SIZE.selected
+                : NODE_SIZE.paper;
+          return {
+            ...node,
+            ...size,
+            role: isOrigin ? ('anchor' as const) : isGroup ? ('group' as const) : ('node' as const),
+            selected,
+            expanded: Boolean(node.data.expanded),
+          };
+        });
+        return resolveFlowCollisions(bounded, { gap: 34, passes: 14 }).map((node) => {
+          const { width, height, role, selected, expanded, ...cleaned } = node;
+          void width;
+          void height;
+          void role;
+          void selected;
+          void expanded;
+          return cleaned;
+        });
+      });
+    },
+    []
+  );
 
   const toggleRole = (role: EvidenceLineageNodeRole) => {
     setRoleFilters((current) => {
@@ -413,21 +685,23 @@ function LineageViewport({
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-0 z-[1]">
-        {ROLE_LANE_LABELS.map((lane) => (
-          <div
-            key={lane.role}
-            className={`absolute rounded-lg border border-border-subtle/70 bg-bg-base/25 px-3 py-2 backdrop-blur-sm ${lane.className}`}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
-              {lane.label}
-            </p>
-            <p className="mt-0.5 text-[9px] uppercase tracking-wide text-text-tertiary">
-              {lane.helper}
-            </p>
-          </div>
-        ))}
-      </div>
+      {originExpanded && (
+        <div className="pointer-events-none absolute inset-0 z-[1]">
+          {ROLE_LANE_LABELS.map((lane) => (
+            <div
+              key={lane.role}
+              className={`absolute rounded-lg border border-border-subtle/70 bg-bg-base/25 px-3 py-2 backdrop-blur-sm ${lane.className}`}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+                {lane.label}
+              </p>
+              <p className="mt-0.5 text-[9px] uppercase tracking-wide text-text-tertiary">
+                {lane.helper}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="absolute left-5 top-[76px] z-10 max-w-[calc(100%-40px)] space-y-2">
         <div className="flex flex-wrap gap-1.5 rounded-xl border border-border-subtle bg-bg-base/80 p-1.5 backdrop-blur">
           {(['foundational', 'derivative', 'neighboring', 'novelty_threat', 'method_source'] as EvidenceLineageNodeRole[]).map((role) => (
@@ -468,11 +742,18 @@ function LineageViewport({
       <div className="absolute right-5 top-5 z-10 rounded-xl border border-border-subtle bg-bg-base/80 px-3 py-2 text-xs text-text-tertiary backdrop-blur">
         {graph.nodes.length} papers / {graph.edges.length} links
       </div>
+      <div
+        key={`lineage-guide-${flowNodes.length}`}
+        className="canvas-coach-mark pointer-events-none absolute bottom-4 left-5 z-10 max-w-[340px] rounded-xl border border-accent-base/30 bg-bg-base/90 px-3 py-2 text-xs leading-relaxed text-text-secondary shadow-lg shadow-black/25 backdrop-blur"
+      >
+        Start from the origin paper. Click <span className="font-semibold text-accent-text">+</span> to reveal paper groups, then expand only the group you want to inspect.
+      </div>
       <ReactFlow
-        key={`${graph.generatedAt || graph.originPaperId}-${selectedNodeId || 'none'}-${[...roleFilters].join(',')}-${[...edgeFilters].join(',')}`}
-        defaultNodes={computed.nodes}
-        defaultEdges={computed.edges}
+        nodes={flowNodes}
+        edges={computed.edges}
         nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        onNodeDragStop={onNodeDragStop}
         fitView
         fitViewOptions={{ padding: 0.08 }}
         minZoom={0.42}

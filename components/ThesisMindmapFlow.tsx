@@ -22,6 +22,7 @@ import {
   ThesisMindmapNode,
   ThesisMindmapNodeStatus,
 } from '@/lib/types';
+import { resolveFlowCollisions } from '@/lib/flowCollision';
 
 interface ThesisMindmapFlowProps {
   mindmap: ThesisMindmap;
@@ -65,6 +66,9 @@ interface FlowNodeData extends Record<string, unknown> {
   onSelectNode?: (node: ThesisMindmapNode, branch: ThesisMindmapBranch) => void;
   onReadPapers?: () => void;
   pivots?: Pivot[];
+  isExpandable?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 type NodeRole = FlowNodeData['nodeRole'];
@@ -180,7 +184,7 @@ function FlowCard({ data }: { data: FlowNodeData }) {
           data.onSelectCenter?.();
         }
       }}
-      className={`group cursor-move rounded-lg border px-3 py-2.5 text-left transition-colors ${
+      className={`group relative cursor-move rounded-lg border px-3 py-2.5 text-left transition-colors ${
         isCenter
           ? isSelected
             ? 'w-[320px] min-h-[130px]'
@@ -203,6 +207,21 @@ function FlowCard({ data }: { data: FlowNodeData }) {
           : '0 12px 26px rgba(0, 0, 0, 0.16)',
       }}
     >
+      {data.isExpandable && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onToggleExpand?.();
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="absolute -right-3 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-accent-base/55 bg-bg-secondary text-lg font-semibold leading-none text-accent-text shadow-lg shadow-black/30 transition-colors hover:bg-accent-muted hover:text-white"
+          aria-label={data.isExpanded ? `Collapse ${data.title}` : `Expand ${data.title}`}
+          title={data.isExpanded ? 'Collapse' : 'Expand'}
+        >
+          {data.isExpanded ? '−' : '+'}
+        </button>
+      )}
       {(Object.keys(HANDLE_POSITIONS) as EdgeSide[]).map((side) => (
         <React.Fragment key={side}>
           <Handle
@@ -277,6 +296,17 @@ function FlowCard({ data }: { data: FlowNodeData }) {
 const nodeTypes = {
   mindmapCard: FlowCard,
 };
+
+function withNodeEntrance(nodes: Node<FlowNodeData>[]) {
+  return nodes.map((node, index) => ({
+    ...node,
+    className: `${node.className || ''} canvas-node-enter`.trim(),
+    style: {
+      ...node.style,
+      animationDelay: `${Math.min(index * 80, 640)}ms`,
+    },
+  }));
+}
 
 type LayoutPositions = Record<string, { x: number; y: number }>;
 
@@ -396,67 +426,33 @@ function nodeFootprint(node: Node<FlowNodeData>) {
 }
 
 function resolveNodeCollisions(nodes: Node<FlowNodeData>[]) {
-  const resolved = nodes.map((node) => ({
-    ...node,
-    position: { ...node.position },
-  }));
-
-  for (let pass = 0; pass < 12; pass += 1) {
-    let changed = false;
-
-    for (let leftIndex = 0; leftIndex < resolved.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < resolved.length; rightIndex += 1) {
-        const leftNode = resolved[leftIndex];
-        const rightNode = resolved[rightIndex];
-        const leftBox = nodeFootprint(leftNode);
-        const rightBox = nodeFootprint(rightNode);
-        const overlapsX =
-          leftBox.left < rightBox.right + NODE_COLLISION_GAP &&
-          leftBox.right + NODE_COLLISION_GAP > rightBox.left;
-        const overlapsY =
-          leftBox.top < rightBox.bottom + NODE_COLLISION_GAP &&
-          leftBox.bottom + NODE_COLLISION_GAP > rightBox.top;
-
-        if (!overlapsX || !overlapsY) continue;
-
-        const leftCenter = {
-          x: leftBox.left + leftBox.width / 2,
-          y: leftBox.top + leftBox.height / 2,
-        };
-        const rightCenter = {
-          x: rightBox.left + rightBox.width / 2,
-          y: rightBox.top + rightBox.height / 2,
-        };
-        const overlapX =
-          Math.min(leftBox.right, rightBox.right) -
-          Math.max(leftBox.left, rightBox.left) +
-          NODE_COLLISION_GAP;
-        const overlapY =
-          Math.min(leftBox.bottom, rightBox.bottom) -
-          Math.max(leftBox.top, rightBox.top) +
-          NODE_COLLISION_GAP;
-        const separateVertically = overlapY <= overlapX || Math.abs(rightCenter.y - leftCenter.y) > 20;
-        const leftWeight = leftNode.id === 'center' ? 0.28 : 0.5;
-        const rightWeight = rightNode.id === 'center' ? 0.28 : 0.5;
-
-        if (separateVertically) {
-          const direction = rightCenter.y >= leftCenter.y ? 1 : -1;
-          leftNode.position.y -= direction * overlapY * leftWeight;
-          rightNode.position.y += direction * overlapY * rightWeight;
-        } else {
-          const direction = rightCenter.x >= leftCenter.x ? 1 : -1;
-          leftNode.position.x -= direction * overlapX * leftWeight;
-          rightNode.position.x += direction * overlapX * rightWeight;
-        }
-
-        changed = true;
-      }
-    }
-
-    if (!changed) break;
-  }
-
-  return resolved;
+  return resolveFlowCollisions(
+    nodes.map((node) => {
+      const footprint = nodeFootprint(node);
+      return {
+        ...node,
+        width: footprint.width,
+        height: footprint.height,
+        role:
+          node.id === 'center'
+            ? ('anchor' as const)
+            : node.data.nodeRole === 'branch'
+              ? ('group' as const)
+              : ('node' as const),
+        selected: Boolean(node.data.isSelected),
+        expanded: Boolean(node.data.isExpanded),
+      };
+    }),
+    { gap: NODE_COLLISION_GAP, passes: 18 }
+  ).map((node) => {
+    const { width, height, role, selected, expanded, ...cleaned } = node;
+    void width;
+    void height;
+    void role;
+    void selected;
+    void expanded;
+    return cleaned;
+  });
 }
 
 function directionSide(
@@ -581,7 +577,16 @@ function buildFlowElements({
   selectedBranchId,
   selectedNodeId,
   selectedCenter,
-}: ThesisMindmapFlowProps): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
+  expandedCenter,
+  expandedBranchIds,
+  onToggleCenter,
+  onToggleBranch,
+}: ThesisMindmapFlowProps & {
+  expandedCenter: boolean;
+  expandedBranchIds: Set<string>;
+  onToggleCenter: () => void;
+  onToggleBranch: (branchId: string) => void;
+}): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
   const nodes: Node<FlowNodeData>[] = [
     {
       id: 'center',
@@ -594,11 +599,16 @@ function buildFlowElements({
         nodeRole: 'center',
         isSelected: selectedCenter,
         onSelectCenter,
+        isExpandable: mindmap.branches.length > 0,
+        isExpanded: expandedCenter,
+        onToggleExpand: onToggleCenter,
       },
       draggable: true,
     },
   ];
   const edges: Edge[] = [];
+
+  if (!expandedCenter) return { nodes: withNodeEntrance(nodes), edges };
 
   mindmap.branches.forEach((branch, branchIndex) => {
     if (viewMode === 'simple') {
@@ -625,6 +635,9 @@ function buildFlowElements({
           branch,
           onExploreBranch,
           onSelectBranch,
+          isExpandable: branch.nodes.length > 0,
+          isExpanded: expandedBranchIds.has(branch.id),
+          onToggleExpand: () => onToggleBranch(branch.id),
         },
         draggable: true,
       });
@@ -662,6 +675,9 @@ function buildFlowElements({
         branch,
         onExploreBranch,
         onSelectBranch,
+        isExpandable: branch.nodes.length > 0,
+        isExpanded: expandedBranchIds.has(branch.id),
+        onToggleExpand: () => onToggleBranch(branch.id),
       },
       draggable: true,
     });
@@ -678,6 +694,8 @@ function buildFlowElements({
         strokeWidth: 1.6,
       })
     );
+
+    if (!expandedBranchIds.has(branch.id)) return;
 
     branch.nodes.slice(0, slot.children.length).forEach((node, nodeIndex) => {
       const childId = `node-${node.id}`;
@@ -722,7 +740,7 @@ function buildFlowElements({
     });
   });
 
-  return { nodes, edges };
+  return { nodes: withNodeEntrance(nodes), edges };
 }
 
 interface FlowCanvasProps {
@@ -815,7 +833,7 @@ function FlowViewport({
   const fitMap = useCallback(() => {
     fitView({
       padding: fitPadding,
-      duration: 250,
+      duration: 420,
     });
   }, [fitPadding, fitView]);
 
@@ -836,6 +854,12 @@ function FlowViewport({
           workspaceMode={workspaceMode}
         />
       )}
+      <div
+        key={`mindmap-guide-${nodes.length}`}
+        className="canvas-coach-mark pointer-events-none absolute bottom-4 left-4 z-10 max-w-[320px] rounded-xl border border-accent-base/30 bg-bg-surface/90 px-3 py-2 text-xs leading-relaxed text-text-secondary shadow-lg shadow-black/25 backdrop-blur"
+      >
+        Start with the thesis card. Click <span className="font-semibold text-accent-text">+</span> to reveal branches, then expand each branch when you need detail.
+      </div>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -884,8 +908,9 @@ function FlowCanvas({
             ? { ...node, position: draggedNode.position }
             : node
         );
-        persistLayoutPositions(nextNodes, viewMode);
-        return nextNodes;
+        const resolved = resolveNodeCollisions(nextNodes);
+        persistLayoutPositions(resolved, viewMode);
+        return resolved;
       });
     },
     [viewMode]
@@ -934,9 +959,40 @@ function FlowCanvas({
 }
 
 export default function ThesisMindmapFlow(props: ThesisMindmapFlowProps) {
+  const [expandedCenter, setExpandedCenter] = useState(false);
+  const [expandedBranchIds, setExpandedBranchIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const toggleCenter = useCallback(() => {
+    setExpandedCenter((current) => !current);
+  }, []);
+  const toggleBranch = useCallback((branchId: string) => {
+    setExpandedBranchIds((current) => {
+      const next = new Set(current);
+      if (next.has(branchId)) next.delete(branchId);
+      else next.add(branchId);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (props.viewportCommand?.type !== 'reset') return;
+    queueMicrotask(() => {
+      setExpandedCenter(false);
+      setExpandedBranchIds(new Set());
+    });
+  }, [props.viewportCommand?.id, props.viewportCommand?.type]);
+
   const { nodes: computedNodes, edges } = useMemo(
-    () => buildFlowElements(props),
-    [props]
+    () =>
+      buildFlowElements({
+        ...props,
+        expandedCenter,
+        expandedBranchIds,
+        onToggleCenter: toggleCenter,
+        onToggleBranch: toggleBranch,
+      }),
+    [expandedBranchIds, expandedCenter, props, toggleBranch, toggleCenter]
   );
   const layoutKey = useMemo(
     () =>
