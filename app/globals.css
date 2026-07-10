@@ -92,6 +92,42 @@ body:has(.results-app-shell) .app-topbar {
   to { transform: rotate(360deg); }
 }
 
+@keyframes canvasNodeAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+    filter: blur(4px);
+  }
+  70% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes canvasCoachMark {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  12% {
+    opacity: 0.96;
+    transform: translateY(0);
+  }
+  72% {
+    opacity: 0.86;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -108,6 +144,40 @@ body:has(.results-app-shell) .app-topbar {
 
 .animate-spin-slow {
   animation: spin-slow 1.5s linear infinite;
+}
+
+.react-flow__node.canvas-node-enter {
+  opacity: 0;
+  animation: canvasNodeAppear 0.52s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+.react-flow__node.canvas-node-enter:not(.dragging) {
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.react-flow__edge-path {
+  transition: d 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
+}
+
+.canvas-coach-mark {
+  opacity: 0;
+  animation: canvasCoachMark 7.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node.canvas-node-enter,
+  .canvas-coach-mark {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  .react-flow__node.canvas-node-enter:not(.dragging),
+  .react-flow__edge-path {
+    transition: none;
+  }
 }
 
 /* ─── Card Components ─────────────────────────────────────────────────────── */

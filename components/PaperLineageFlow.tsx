@@ -306,6 +306,17 @@ const nodeTypes = {
   lineageCard: LineageCard,
 };
 
+function withNodeEntrance(nodes: Node<LineageNodeData>[]) {
+  return nodes.map((node, index) => ({
+    ...node,
+    className: `${node.className || ''} canvas-node-enter`.trim(),
+    style: {
+      ...node.style,
+      animationDelay: `${Math.min(index * 80, 640)}ms`,
+    },
+  }));
+}
+
 function buildLayout(
   graph: EvidenceLineageGraph,
   selectedNodeId: string | undefined,
@@ -516,7 +527,7 @@ function buildLayout(
     return cleaned;
   });
 
-  return { nodes: resolvedNodes, edges: [...edges, ...relationEdges] };
+  return { nodes: withNodeEntrance(resolvedNodes), edges: [...edges, ...relationEdges] };
 }
 
 function LineageViewport({
@@ -588,7 +599,7 @@ function LineageViewport({
   const { fitView } = useReactFlow<Node<LineageNodeData>>();
 
   const fitGraph = useCallback(() => {
-    fitView({ padding: 0.08, duration: 250 });
+    fitView({ padding: 0.08, duration: 420 });
   }, [fitView]);
 
   useEffect(() => {
@@ -731,8 +742,11 @@ function LineageViewport({
       <div className="absolute right-5 top-5 z-10 rounded-xl border border-border-subtle bg-bg-base/80 px-3 py-2 text-xs text-text-tertiary backdrop-blur">
         {graph.nodes.length} papers / {graph.edges.length} links
       </div>
-      <div className="pointer-events-none absolute bottom-4 left-5 z-10 rounded-lg border border-border-subtle bg-bg-base/80 px-3 py-2 text-xs text-text-tertiary backdrop-blur">
-        Click + to expand the map
+      <div
+        key={`lineage-guide-${flowNodes.length}`}
+        className="canvas-coach-mark pointer-events-none absolute bottom-4 left-5 z-10 max-w-[340px] rounded-xl border border-accent-base/30 bg-bg-base/90 px-3 py-2 text-xs leading-relaxed text-text-secondary shadow-lg shadow-black/25 backdrop-blur"
+      >
+        Start from the origin paper. Click <span className="font-semibold text-accent-text">+</span> to reveal paper groups, then expand only the group you want to inspect.
       </div>
       <ReactFlow
         nodes={flowNodes}

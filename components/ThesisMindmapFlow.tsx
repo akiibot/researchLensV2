@@ -297,6 +297,17 @@ const nodeTypes = {
   mindmapCard: FlowCard,
 };
 
+function withNodeEntrance(nodes: Node<FlowNodeData>[]) {
+  return nodes.map((node, index) => ({
+    ...node,
+    className: `${node.className || ''} canvas-node-enter`.trim(),
+    style: {
+      ...node.style,
+      animationDelay: `${Math.min(index * 80, 640)}ms`,
+    },
+  }));
+}
+
 type LayoutPositions = Record<string, { x: number; y: number }>;
 
 const LAYOUT_STORAGE_KEY = 'researchlens_mindmap_layout_v2';
@@ -597,7 +608,7 @@ function buildFlowElements({
   ];
   const edges: Edge[] = [];
 
-  if (!expandedCenter) return { nodes, edges };
+  if (!expandedCenter) return { nodes: withNodeEntrance(nodes), edges };
 
   mindmap.branches.forEach((branch, branchIndex) => {
     if (viewMode === 'simple') {
@@ -729,7 +740,7 @@ function buildFlowElements({
     });
   });
 
-  return { nodes, edges };
+  return { nodes: withNodeEntrance(nodes), edges };
 }
 
 interface FlowCanvasProps {
@@ -822,7 +833,7 @@ function FlowViewport({
   const fitMap = useCallback(() => {
     fitView({
       padding: fitPadding,
-      duration: 250,
+      duration: 420,
     });
   }, [fitPadding, fitView]);
 
@@ -843,8 +854,11 @@ function FlowViewport({
           workspaceMode={workspaceMode}
         />
       )}
-      <div className="pointer-events-none absolute bottom-4 left-4 z-10 rounded-lg border border-border-subtle bg-bg-surface/80 px-3 py-2 text-xs text-text-tertiary backdrop-blur">
-        Click + to expand the map
+      <div
+        key={`mindmap-guide-${nodes.length}`}
+        className="canvas-coach-mark pointer-events-none absolute bottom-4 left-4 z-10 max-w-[320px] rounded-xl border border-accent-base/30 bg-bg-surface/90 px-3 py-2 text-xs leading-relaxed text-text-secondary shadow-lg shadow-black/25 backdrop-blur"
+      >
+        Start with the thesis card. Click <span className="font-semibold text-accent-text">+</span> to reveal branches, then expand each branch when you need detail.
       </div>
       <ReactFlow
         nodes={nodes}
