@@ -37,6 +37,17 @@ function scoreColor(criterion: ResearchSanityCriterion, risk = false): string {
   return 'text-status-error';
 }
 
+function levelLabel(level: ResearchSanityCriterion['level']): string {
+  return level === 'high-risk' ? 'High Risk' : level.charAt(0).toUpperCase() + level.slice(1);
+}
+
+function overallLevel(score: number): { label: string; color: string } {
+  if (score >= 75) return { label: 'Strong', color: 'text-status-success' };
+  if (score >= 55) return { label: 'Promising', color: 'text-status-warning' };
+  if (score >= 35) return { label: 'Needs Narrowing', color: 'text-status-warning' };
+  return { label: 'Weak', color: 'text-status-error' };
+}
+
 export default function ResearchSanityPanel({
   matrix,
 }: ResearchSanityPanelProps) {
@@ -52,10 +63,10 @@ export default function ResearchSanityPanel({
           </p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold text-text-primary">
-            {matrix.overallScore}
+          <p className={`text-2xl font-bold ${overallLevel(matrix.overallScore).color}`}>
+            {overallLevel(matrix.overallScore).label}
           </p>
-          <p className="text-xs text-text-tertiary">overall</p>
+          <p className="text-xs text-text-tertiary">overall ({matrix.overallScore}/100)</p>
         </div>
       </div>
 
@@ -87,9 +98,14 @@ export default function ResearchSanityPanel({
                   <p className="text-xs font-medium text-text-secondary">
                     {label}
                   </p>
-                  <p className={`text-lg font-bold ${scoreColor(criterion, risk)}`}>
-                    {criterion.score}
-                  </p>
+                  <span className="text-right">
+                    <span className={`block text-base font-bold leading-tight ${scoreColor(criterion, risk)}`}>
+                      {levelLabel(criterion.level)}
+                    </span>
+                    <span className="block text-[11px] text-text-tertiary">
+                      {criterion.score}/100
+                    </span>
+                  </span>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
                   <div

@@ -23,6 +23,7 @@ import { computeResearchSanityMatrix } from '@/lib/sanityMatrix';
 import { buildThesisMindmap } from '@/lib/thesisMindmap';
 import { ownerIdHeaders } from '@/lib/ownerToken';
 import { getFundingConnectorUrl } from '@/lib/fundingConnectors';
+import { MOCK_ANALYSIS_RESULT, MOCK_IDEA, MOCK_QUERIES } from '@/lib/mockData';
 
 type PageState = 'idle' | 'loading' | 'error';
 
@@ -84,6 +85,24 @@ function HomeContent() {
       // sessionStorage unavailable
     }
   }, [searchParams]);
+
+  const handleViewDemo = useCallback(() => {
+    setPageState('loading');
+    // Simulate the real pipeline's wait so the demo reads naturally during a
+    // presentation, while staying a fixed, predictable length.
+    setTimeout(() => {
+      try {
+        sessionStorage.setItem('researchlens_result', JSON.stringify(MOCK_ANALYSIS_RESULT));
+        sessionStorage.setItem('researchlens_queries', JSON.stringify(MOCK_QUERIES));
+        sessionStorage.setItem('researchlens_idea_data', JSON.stringify(MOCK_IDEA));
+        sessionStorage.setItem('researchlens_idea', MOCK_IDEA.text);
+      } catch {
+        // sessionStorage unavailable; navigation below will just show the
+        // "no report to show" state, same as any other storage failure.
+      }
+      router.push('/results');
+    }, 5000);
+  }, [router]);
 
   const handleSubmit = useCallback(
     async (data: {
@@ -531,6 +550,16 @@ function HomeContent() {
                   onModeChange={setSelectedMode}
                   pivotContext={pivotContext}
                 />
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={handleViewDemo}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-text-tertiary hover:text-accent-text transition-all cursor-pointer"
+                  >
+                    <span>⚡</span>
+                    View a preloaded demo report — no waiting
+                  </button>
+                </div>
               </div>
             </div>
           </div>

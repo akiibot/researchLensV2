@@ -47,7 +47,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-bg-primary text-text-primary font-[family-name:var(--font-geist-sans)]">
+      <body
+        className="min-h-full flex flex-col bg-bg-primary text-text-primary font-[family-name:var(--font-geist-sans)]"
+        suppressHydrationWarning
+      >
         {/* Collapsed top bar */}
         <header className="app-topbar group sticky top-0 z-40 h-2 overflow-hidden border-b border-border-subtle bg-bg-primary/85 backdrop-blur-sm transition-[height] duration-300 hover:h-14 focus-within:h-14">
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 sm:px-6 lg:px-8">

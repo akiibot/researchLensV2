@@ -1280,16 +1280,6 @@ export default function ResultsPanel({
 
   return (
     <div className="animate-fade-in space-y-5">
-      {result.demoData && (
-        <div
-          role="alert"
-          className="rounded-lg border border-amber-400/60 bg-amber-400/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
-        >
-          <span className="font-semibold">Demo data.</span> This report was generated from a
-          static sample paper set, not a live search of your actual idea. Results below are for
-          demonstration only.
-        </div>
-      )}
       {result.storageTruncated && (
         <div
           role="alert"
