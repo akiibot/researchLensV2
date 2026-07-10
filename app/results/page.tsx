@@ -34,6 +34,7 @@ export default function ResultsPage() {
   const [queries, setQueries] = useState<string[]>([]);
   const [idea, setIdea] = useState<ResearchIdea | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     try {
@@ -42,7 +43,10 @@ export default function ResultsPage() {
       const storedIdea = sessionStorage.getItem('researchlens_idea_data');
 
       if (!storedResult) {
-        router.push('/');
+        queueMicrotask(() => {
+          setSessionExpired(true);
+          setIsLoading(false);
+        });
         return;
       }
 
@@ -59,7 +63,10 @@ export default function ResultsPage() {
         setIsLoading(false);
       });
     } catch {
-      router.push('/');
+      queueMicrotask(() => {
+        setSessionExpired(true);
+        setIsLoading(false);
+      });
     }
   }, [router]);
 
@@ -141,29 +148,31 @@ export default function ResultsPage() {
     );
   }
 
-  if (!result) {
-    return null; // Redirecting...
+  if (sessionExpired || !result) {
+    return (
+      <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-2">
+          No report to show
+        </p>
+        <h2 className="text-2xl font-bold text-text-primary mb-3">
+          Your session doesn&apos;t have a saved report
+        </h2>
+        <p className="text-sm text-text-secondary mb-6">
+          This can happen if the tab was refreshed, the link was opened in a new tab, or your
+          previous session expired. Start a new search to generate a fresh report.
+        </p>
+        <button
+          onClick={() => router.push('/')}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent-base text-sm font-semibold text-white hover:bg-accent-hover transition-all cursor-pointer"
+        >
+          Start a new search
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-      {/* Page header */}
-      <div className="mb-8 animate-fade-in">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-2 h-2 rounded-full bg-status-success" />
-          <span className="text-xs text-status-success font-medium uppercase tracking-wide">
-            Analysis Complete
-          </span>
-        </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-2">
-          Your Research Gap Report
-        </h2>
-        <p className="text-sm text-text-tertiary">
-          Based on {result.totalPapersRetrieved} real papers from{' '}
-          {Object.values(result.sourceCounts).filter((c) => c > 0).length} academic sources
-        </p>
-      </div>
-
       {/* Bangla Translation Notice */}
       {idea?.language === 'bn' && (
         <div className="mb-6 p-4 rounded-xl bg-accent-base/10 border border-accent-base/20 text-text-secondary animate-slide-up flex gap-3 items-start">
@@ -183,12 +192,13 @@ export default function ResultsPage() {
       <ResultsPanel
         result={result}
         queries={queries}
+        mode={idea?.mode}
         onExplorePivot={idea ? handleExplorePivot : undefined}
         onExploreMindmapNode={idea ? handleExploreMindmapNode : undefined}
       />
 
-      {/* Refine button */}
-      <div className="mt-10 text-center animate-fade-in">
+      {/* Refine / new search buttons */}
+      <div className="mt-10 flex flex-wrap items-center justify-center gap-3 animate-fade-in">
         <button
           onClick={handleRefine}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-bg-secondary border border-border-subtle text-sm font-medium text-text-secondary hover:text-text-primary hover:border-accent-base/40 hover:bg-accent-base/10 transition-all cursor-pointer token-focus"
@@ -201,6 +211,12 @@ export default function ResultsPage() {
             />
           </svg>
           Refine Your Idea
+        </button>
+        <button
+          onClick={() => router.push('/')}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border-subtle text-sm font-medium text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary transition-all cursor-pointer token-focus"
+        >
+          Start a New Search
         </button>
       </div>
     </div>

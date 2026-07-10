@@ -49,6 +49,7 @@ interface SearchFormProps {
   initialIdea?: string;
   initialIdeaData?: ResearchIdea;
   mode: AppMode;
+  onModeChange?: (mode: AppMode) => void;
   pivotContext?: PivotExplorationContext | null;
 }
 
@@ -149,6 +150,7 @@ export default function SearchForm({
   initialIdea,
   initialIdeaData,
   mode,
+  onModeChange,
   pivotContext,
 }: SearchFormProps) {
   const [text, setText] = useState(initialIdea || '');
@@ -163,6 +165,7 @@ export default function SearchForm({
     useState<RetrievalDepth>('balanced');
   const [enabledSources, setEnabledSources] =
     useState<RetrievalSource[]>(BALANCED_SOURCES);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (initialIdea) {
@@ -178,6 +181,9 @@ export default function SearchForm({
       setLevel(initialIdeaData.level || 'undergraduate');
       setLanguage(initialIdeaData.language || 'en');
       setEvidenceScope(initialIdeaData.evidenceScope || 'balanced');
+      if (initialIdeaData.evidenceScope && initialIdeaData.evidenceScope !== 'balanced') {
+        setShowAdvanced(true);
+      }
     });
   }, [initialIdeaData]);
 
@@ -191,7 +197,7 @@ export default function SearchForm({
       : 'Describe the thesis idea you want to validate and find potential supervisors for.';
   const placeholderText =
     language === 'bn'
-      ? 'Apnar research idea ba topic likhun...'
+      ? 'আপনার গবেষণার ধারণা বা বিষয় লিখুন...'
       : mode === 'faculty'
         ? 'For example: AI tools for formative assessment in higher education'
         : 'For example: I want to study how social media usage affects exam anxiety among university students in Bangladesh';
@@ -236,8 +242,27 @@ export default function SearchForm({
       <div className="surface-card p-6 sm:p-8 space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-accent-base/10 border border-accent-base/20 text-xs font-medium text-accent-text">
-              {mode === 'faculty' ? 'Faculty workflow' : 'Student workflow'}
+            <div className="flex gap-2" role="group" aria-label="Workflow">
+              {(
+                [
+                  { value: 'student' as const, label: 'Student workflow' },
+                  { value: 'faculty' as const, label: 'Faculty workflow' },
+                ]
+              ).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={mode === value}
+                  onClick={() => onModeChange?.(value)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
+                    mode === value
+                      ? 'bg-accent-base/20 border border-accent-base/40 text-accent-text'
+                      : 'bg-bg-secondary border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             {pivotContext && (
               <div className="mt-3 rounded-lg border border-accent-base/20 bg-accent-base/10 px-3 py-2">
@@ -290,8 +315,8 @@ export default function SearchForm({
         </div>
 
         <div>
-          <p className="text-xs text-text-tertiary mb-2">Try an example:</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-sm font-medium text-text-secondary mb-2">Try Examples:</p>
+          <div className="flex flex-col gap-2">
             {EXAMPLES.map((example) => (
               <button
                 key={example}
@@ -301,7 +326,7 @@ export default function SearchForm({
                   setLanguage('en');
                 }}
                 disabled={isLoading}
-                className="text-xs px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-full border border-border-subtle bg-bg-secondary text-text-secondary hover:text-accent-hover hover:border-accent-base/30 hover:bg-accent-base/5 transition-all disabled:opacity-50 cursor-pointer"
+                className="w-full min-h-[44px] rounded-lg border border-border-subtle bg-bg-secondary px-4 py-2 text-left text-sm text-text-secondary hover:text-accent-hover hover:border-accent-base/30 hover:bg-accent-base/5 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {example}
               </button>
@@ -310,6 +335,30 @@ export default function SearchForm({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Academic Level
+            </label>
+            <div className="flex gap-2">
+              {LEVELS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={level === value}
+                  onClick={() => setLevel(value)}
+                  disabled={isLoading}
+                  className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                    level === value
+                      ? 'bg-accent-base/20 border border-accent-base/40 text-accent-text'
+                      : 'bg-bg-secondary border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
+                  } disabled:opacity-50`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="field-select"
@@ -333,30 +382,11 @@ export default function SearchForm({
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Academic Level
-            </label>
-            <div className="flex gap-2">
-              {LEVELS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={level === value}
-                  onClick={() => setLevel(value)}
-                  disabled={isLoading}
-                  className={`flex-1 min-h-[44px] px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
-                    level === value
-                      ? 'bg-accent-base/20 border border-accent-base/40 text-accent-text'
-                      : 'bg-bg-secondary border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
-                  } disabled:opacity-50`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            {field === '' && charCount >= MIN_CHARS && (
+              <p className="mt-1.5 text-xs text-status-warning">
+                Select a field to continue.
+              </p>
+            )}
           </div>
         </div>
 
@@ -394,85 +424,110 @@ export default function SearchForm({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Evidence Scope
-            </label>
-            <select
-              value={evidenceScope}
-              onChange={(event) =>
-                setEvidenceScope(event.target.value as EvidenceScope)
-              }
-              disabled={isLoading}
-              className="w-full min-h-[44px] bg-bg-tertiary border border-border-subtle rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-base/50 focus:border-accent-base/50 transition-all disabled:opacity-50 appearance-none cursor-pointer"
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((current) => !current)}
+            aria-expanded={showAdvanced}
+            aria-controls="advanced-options"
+            className="flex w-full items-center justify-between rounded-xl border border-border-subtle bg-bg-secondary px-4 py-3 text-sm font-medium text-text-secondary transition-all cursor-pointer hover:border-border-strong hover:text-text-primary"
+          >
+            <span>Advanced options</span>
+            <svg
+              className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+              viewBox="0 0 20 20"
+              fill="currentColor"
             >
-              {EVIDENCE_SCOPE_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-text-tertiary mt-2">
-              {
-                EVIDENCE_SCOPE_OPTIONS.find(
-                  (option) => option.id === evidenceScope
-                )?.helper
-              }
-            </p>
-          </div>
+              <path
+                fillRule="evenodd"
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Source Coverage
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['fast', 'balanced', 'full'] as const).map((depth) => (
-                <button
-                  key={depth}
-                  type="button"
-                  aria-pressed={retrievalDepth === depth}
-                  onClick={() => applyDepth(depth)}
+          {showAdvanced && (
+            <div id="advanced-options" className="mt-3 space-y-3 animate-fade-in">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Evidence Scope
+                </label>
+                <select
+                  value={evidenceScope}
+                  onChange={(event) =>
+                    setEvidenceScope(event.target.value as EvidenceScope)
+                  }
                   disabled={isLoading}
-                  className={`min-h-[44px] rounded-xl px-3 py-2 text-xs font-medium capitalize transition-all cursor-pointer ${
-                    retrievalDepth === depth
-                      ? 'bg-accent-base/20 border border-accent-base/40 text-accent-text'
-                      : 'bg-bg-secondary border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
-                  } disabled:opacity-50`}
+                  className="w-full min-h-[44px] bg-bg-tertiary border border-border-subtle rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-base/50 focus:border-accent-base/50 transition-all disabled:opacity-50 appearance-none cursor-pointer"
                 >
-                  {depth}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-text-tertiary mt-2">
-              Fast skips rate-limited citation and specialist databases. Full checks every configured source.
-            </p>
-          </div>
+                  {EVIDENCE_SCOPE_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-text-tertiary mt-2">
+                  {
+                    EVIDENCE_SCOPE_OPTIONS.find(
+                      (option) => option.id === evidenceScope
+                    )?.helper
+                  }
+                </p>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {SOURCE_OPTIONS.map((source) => (
-              <label
-                key={source.id}
-                className="flex items-start gap-3 rounded-xl border border-border-subtle bg-bg-secondary px-3 py-3 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={enabledSources.includes(source.id)}
-                  onChange={() => toggleSource(source.id)}
-                  disabled={isLoading}
-                  className="mt-1"
-                />
-                <span>
-                  <span className="block text-xs font-medium text-text-primary">
-                    {source.label}
-                  </span>
-                  <span className="block text-xs text-text-tertiary">
-                    {source.helper}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Source Coverage
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['fast', 'balanced', 'full'] as const).map((depth) => (
+                    <button
+                      key={depth}
+                      type="button"
+                      aria-pressed={retrievalDepth === depth}
+                      onClick={() => applyDepth(depth)}
+                      disabled={isLoading}
+                      className={`min-h-[44px] rounded-xl px-3 py-2 text-xs font-medium capitalize transition-all cursor-pointer ${
+                        retrievalDepth === depth
+                          ? 'bg-accent-base/20 border border-accent-base/40 text-accent-text'
+                          : 'bg-bg-secondary border border-border-subtle text-text-secondary hover:text-text-primary hover:border-border-strong'
+                      } disabled:opacity-50`}
+                    >
+                      {depth}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-text-tertiary mt-2">
+                  Fast skips rate-limited citation and specialist databases. Full checks every configured source.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {SOURCE_OPTIONS.map((source) => (
+                  <label
+                    key={source.id}
+                    className="flex items-start gap-3 rounded-xl border border-border-subtle bg-bg-secondary px-3 py-3 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabledSources.includes(source.id)}
+                      onChange={() => toggleSource(source.id)}
+                      disabled={isLoading}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="block text-xs font-medium text-text-primary">
+                        {source.label}
+                      </span>
+                      <span className="block text-xs text-text-tertiary">
+                        {source.helper}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <button

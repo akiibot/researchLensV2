@@ -10,6 +10,16 @@ interface FacultyDirectoryResponse {
   configured: boolean;
 }
 
+/**
+ * PostgREST's `.or()` filter syntax treats `,` `.` `(` `)` as structural
+ * characters. Wrapping the value in double quotes escapes them (per
+ * PostgREST's own quoting rules); backslashes/quotes inside the value must
+ * themselves be escaped so the quoting can't be broken out of.
+ */
+function escapePostgrestFilterValue(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
 function mapRow(row: Record<string, unknown>): FacultyProfile {
   return {
     id: String(row.id || row.openalex_author_id || ''),
@@ -67,7 +77,8 @@ export async function GET(
     if (authorId) {
       query = query.eq('openalex_author_id', authorId);
     } else if (q) {
-      query = query.or(`name.ilike.%${q}%,institution.ilike.%${q}%`);
+      const escaped = escapePostgrestFilterValue(`%${q}%`);
+      query = query.or(`name.ilike.${escaped},institution.ilike.${escaped}`);
     }
 
     if (country) {
@@ -76,8 +87,9 @@ export async function GET(
 
     const { data, error } = await query;
     if (error) {
+      console.error('[faculty/directory] Supabase query failed:', error.message);
       return NextResponse.json(
-        { error: error.message, code: 'FACULTY_DIRECTORY_ERROR' },
+        { error: 'Failed to load faculty directory', code: 'FACULTY_DIRECTORY_ERROR' },
         { status: 500 }
       );
     }

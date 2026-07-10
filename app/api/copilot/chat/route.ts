@@ -7,10 +7,22 @@ import {
   isValidCopilotRequest,
 } from '@/lib/copilot';
 import { generateGeminiText, hasGeminiCredentials } from '@/lib/geminiClient';
+import { enforceRateLimit, readJsonWithLimit } from '@/lib/apiGuards';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as Partial<CopilotChatRequest>;
+    const limited = enforceRateLimit(request, 'copilot-chat', 20, 60_000);
+    if (limited) return limited;
+
+    let body: Partial<CopilotChatRequest>;
+    try {
+      body = await readJsonWithLimit<Partial<CopilotChatRequest>>(request, 1024 * 1024);
+    } catch {
+      return NextResponse.json(
+        { error: 'Request body is too large', code: 'BODY_TOO_LARGE' },
+        { status: 413 }
+      );
+    }
 
     if (!body.message || !body.message.trim()) {
       return NextResponse.json(

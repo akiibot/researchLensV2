@@ -1,27 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  /* Restrained Strategy: Deep tinted neutrals with an Indigo accent */
-  --bg-primary: oklch(18% 0.01 270);
-  --bg-secondary: oklch(22% 0.015 270);
-  --bg-tertiary: oklch(26% 0.02 270);
-  --bg-surface: oklch(20% 0.01 270);
-  --bg-surface-hover: oklch(24% 0.015 270);
-  
-  --border-subtle: oklch(35% 0.015 270);
-  --border-strong: oklch(45% 0.02 270);
-  
-  --text-primary: oklch(98% 0.005 270);
-  --text-secondary: oklch(80% 0.01 270);
-  --text-tertiary: oklch(65% 0.01 270);
-  
-  --accent-base: oklch(60% 0.15 260);
-  --accent-hover: oklch(65% 0.15 260);
-  --accent-muted: oklch(30% 0.05 260);
-  --accent-text: oklch(85% 0.1 260);
-  --shadow-light: oklch(34% 0.025 270 / 0.42);
-  --shadow-dark: oklch(10% 0.01 270 / 0.55);
-  --shadow-accent: oklch(60% 0.15 260 / 0.16);
+  /* ResearchLens brand palette (from Figma), converted to OKLCH:
+     a deeper, more saturated blue-violet family than the previous
+     indigo-gray theme. */
+  --bg-primary: oklch(13% 0.03 276);
+  --bg-secondary: oklch(21% 0.04 277);
+  --bg-tertiary: oklch(25% 0.047 282);
+  --bg-surface: oklch(19% 0.037 275);
+  --bg-surface-hover: oklch(23% 0.045 279);
+
+  --border-subtle: oklch(30% 0.05 273);
+  --border-strong: oklch(44% 0.104 273);
+
+  --text-primary: oklch(97% 0.01 275);
+  --text-secondary: oklch(80% 0.045 270);
+  --text-tertiary: oklch(66% 0.07 273);
+
+  --accent-base: oklch(60% 0.16 278);
+  --accent-hover: oklch(65% 0.16 278);
+  --accent-muted: oklch(32% 0.1 283);
+  --accent-text: oklch(82% 0.09 275);
+  --shadow-light: oklch(34% 0.03 275 / 0.42);
+  --shadow-dark: oklch(8% 0.02 276 / 0.55);
+  --shadow-accent: oklch(60% 0.16 278 / 0.16);
   
   /* Status colors */
   --status-error: oklch(65% 0.15 25);

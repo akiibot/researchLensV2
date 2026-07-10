@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { AnalysisResult, FundingFit, JournalTargeting } from '@/lib/types';
+import { copyToClipboard } from '@/lib/clipboard';
+import Button from '@/components/ui/Button';
 import FundingFitPanel from './FundingFitPanel';
 import JournalTargetingPanel from './JournalTargetingPanel';
 
@@ -66,16 +68,7 @@ export default function ResearchFitPanel({ result }: ResearchFitPanelProps) {
   const publicationFit = result.journalTargeting;
 
   const copyText = async (label: string, text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
+    await copyToClipboard(text);
     setCopied(label);
     setTimeout(() => setCopied(null), 1600);
   };
@@ -161,24 +154,24 @@ export default function ResearchFitPanel({ result }: ResearchFitPanelProps) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => copyText('funding', buildFundingSummary(fundingFit))}
-            className="rounded-lg bg-accent-base px-3 py-2 text-xs font-semibold text-white hover:bg-accent-hover"
           >
             {copied === 'funding' ? 'Copied funding summary' : 'Copy funding summary'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() =>
               copyText('publication', buildPublicationSummary(publicationFit))
             }
-            className="rounded-lg border border-border-subtle px-3 py-2 text-xs font-semibold text-text-secondary hover:border-accent-base/50 hover:text-text-primary"
           >
             {copied === 'publication'
               ? 'Copied publication summary'
               : 'Copy publication summary'}
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiError, FacultyShortlistItem } from '@/lib/types';
-import {
-  getSupabasePublicClient,
-  getSupabaseServiceClient,
-  hasSupabaseConfig,
-} from '@/lib/supabaseServer';
+import { getSupabaseServiceClient, hasSupabaseConfig } from '@/lib/supabaseServer';
+import { readOwnerIdFromRequest } from '@/lib/ownerToken';
+import { enforceRateLimit, readJsonWithLimit } from '@/lib/apiGuards';
 
 function mapShortlistRow(row: Record<string, unknown>): FacultyShortlistItem {
   const profile = row.faculty_profiles as Record<string, unknown> | null;
@@ -41,14 +39,33 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<{ id: string | null; configured: boolean } | ApiError>> {
   try {
-    const body = await request.json();
+    const limited = enforceRateLimit(request, 'faculty-shortlist', 30, 60_000);
+    if (limited) return limited;
+
+    let body: { openAlexAuthorId?: string; reportId?: string; note?: string };
+    try {
+      body = await readJsonWithLimit(request, 64 * 1024);
+    } catch {
+      return NextResponse.json(
+        { error: 'Request body is too large', code: 'BODY_TOO_LARGE' },
+        { status: 413 }
+      );
+    }
     const openAlexAuthorId = String(body.openAlexAuthorId || '');
     const reportId = body.reportId ? String(body.reportId) : null;
     const note = body.note ? String(body.note) : null;
+    const ownerId = readOwnerIdFromRequest(request);
 
     if (!openAlexAuthorId) {
       return NextResponse.json(
         { error: 'OpenAlex author id is required', code: 'MISSING_AUTHOR_ID' },
+        { status: 400 }
+      );
+    }
+
+    if (!ownerId) {
+      return NextResponse.json(
+        { error: 'Missing owner identity', code: 'MISSING_OWNER_ID' },
         { status: 400 }
       );
     }
@@ -65,6 +82,7 @@ export async function POST(
           openalex_author_id: openAlexAuthorId,
           report_id: reportId,
           note,
+          owner_id: ownerId,
         },
         { onConflict: 'openalex_author_id,report_id' }
       )
@@ -72,8 +90,9 @@ export async function POST(
       .single();
 
     if (error) {
+      console.error('[faculty/shortlist] Supabase save failed:', error.message);
       return NextResponse.json(
-        { error: error.message, code: 'SHORTLIST_SAVE_ERROR' },
+        { error: 'Failed to save shortlist item', code: 'SHORTLIST_SAVE_ERROR' },
         { status: 500 }
       );
     }
@@ -88,15 +107,20 @@ export async function POST(
   }
 }
 
-export async function GET(): Promise<
-  NextResponse<{ items: FacultyShortlistItem[]; configured: boolean } | ApiError>
-> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<{ items: FacultyShortlistItem[]; configured: boolean } | ApiError>> {
   try {
     if (!hasSupabaseConfig()) {
       return NextResponse.json({ items: [], configured: false });
     }
 
-    const supabase = getSupabasePublicClient();
+    const ownerId = readOwnerIdFromRequest(request);
+    if (!ownerId) {
+      return NextResponse.json({ items: [], configured: true });
+    }
+
+    const supabase = getSupabaseServiceClient();
     if (!supabase) {
       return NextResponse.json({ items: [], configured: false });
     }
@@ -104,12 +128,14 @@ export async function GET(): Promise<
     const { data, error } = await supabase
       .from('faculty_shortlist')
       .select('*, faculty_profiles(*)')
+      .eq('owner_id', ownerId)
       .order('created_at', { ascending: false })
       .limit(80);
 
     if (error) {
+      console.error('[faculty/shortlist] Supabase list failed:', error.message);
       return NextResponse.json(
-        { error: error.message, code: 'SHORTLIST_LIST_ERROR' },
+        { error: 'Failed to load shortlist', code: 'SHORTLIST_LIST_ERROR' },
         { status: 500 }
       );
     }

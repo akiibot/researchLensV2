@@ -47,13 +47,7 @@ function tokenizeTitle(title: string): Set<string> {
   );
 }
 
-/**
- * Computes Jaccard similarity between two title strings.
- */
-export function titleSimilarity(titleA: string, titleB: string): number {
-  const tokensA = tokenizeTitle(titleA);
-  const tokensB = tokenizeTitle(titleB);
-
+function jaccardSimilarity(tokensA: Set<string>, tokensB: Set<string>): number {
   if (tokensA.size === 0 || tokensB.size === 0) return 0;
 
   let intersectionSize = 0;
@@ -67,6 +61,13 @@ export function titleSimilarity(titleA: string, titleB: string): number {
   if (unionSize === 0) return 0;
 
   return intersectionSize / unionSize;
+}
+
+/**
+ * Computes Jaccard similarity between two title strings.
+ */
+export function titleSimilarity(titleA: string, titleB: string): number {
+  return jaccardSimilarity(tokenizeTitle(titleA), tokenizeTitle(titleB));
 }
 
 function sourcePriority(source: Paper['source']): number {
@@ -86,32 +87,53 @@ function sourcePriority(source: Paper['source']): number {
 
 function metadataScore(paper: Paper): number {
   const abstractScore = Math.min(paper.abstract.length, 2000) / 100;
+  const hasFullText = Boolean(paper.pdfUrl) || paper.fullTextStatus === 'available';
 
   return (
     abstractScore +
     (paper.doi ? 20 : 0) +
     (paper.url ? 5 : 0) +
     (paper.venue ? 5 : 0) +
+    (hasFullText ? 25 : 0) +
     Math.min(paper.citationCount, 500) / 25 +
     sourcePriority(paper.source)
   );
 }
 
 function selectBetter(existing: Paper, candidate: Paper): Paper {
-  if (metadataScore(candidate) > metadataScore(existing)) {
-    return { ...candidate, id: existing.id };
+  const winner =
+    metadataScore(candidate) > metadataScore(existing)
+      ? { ...candidate, id: existing.id }
+      : existing;
+  const loser = winner === existing ? candidate : existing;
+
+  // Even when the winner has richer metadata overall, don't let a real,
+  // working full-text link get thrown away just because the other record
+  // scored higher on citations/DOI/etc.
+  if (!winner.pdfUrl && loser.pdfUrl) {
+    return {
+      ...winner,
+      pdfUrl: loser.pdfUrl,
+      accessType: loser.accessType ?? winner.accessType,
+      fullTextStatus: loser.fullTextStatus ?? winner.fullTextStatus,
+      fullTextSource: loser.fullTextSource ?? winner.fullTextSource,
+      fullTextVerifiedAt: loser.fullTextVerifiedAt ?? winner.fullTextVerifiedAt,
+    };
   }
 
-  return existing;
+  return winner;
 }
 
-function isTitleDuplicate(titleA: string, titleB: string): boolean {
-  const normalizedA = normalizeTitle(titleA);
-  const normalizedB = normalizeTitle(titleB);
+function isTitleDuplicateByTokens(
+  normalizedA: string,
+  normalizedB: string,
+  tokensA: Set<string>,
+  tokensB: Set<string>
+): boolean {
   if (!normalizedA || !normalizedB) return false;
   if (normalizedA === normalizedB) return true;
 
-  return titleSimilarity(titleA, titleB) >= 0.92;
+  return jaccardSimilarity(tokensA, tokensB) >= 0.92;
 }
 
 function registerIndexes(
@@ -133,10 +155,15 @@ export function deduplicatePapers(papers: Paper[]): Paper[] {
   const deduplicated: Paper[] = [];
   const doiToIndex = new Map<string, number>();
   const titleToIndex = new Map<string, number>();
+  // Memoized per-accepted-paper tokenization, so the O(n) fallback scan
+  // never re-tokenizes an already-accepted title from scratch.
+  const dedupedNormalizedTitles: string[] = [];
+  const dedupedTokenSets: Set<string>[] = [];
 
   for (const paper of papers) {
     const normalizedDoi = normalizeDoi(paper.doi);
     const normalizedTitle = normalizeTitle(paper.title);
+    const tokens = tokenizeTitle(paper.title);
 
     let duplicateIndex =
       normalizedDoi && doiToIndex.has(normalizedDoi)
@@ -149,7 +176,14 @@ export function deduplicatePapers(papers: Paper[]): Paper[] {
 
     if (duplicateIndex === undefined) {
       for (let i = 0; i < deduplicated.length; i++) {
-        if (isTitleDuplicate(paper.title, deduplicated[i].title)) {
+        if (
+          isTitleDuplicateByTokens(
+            normalizedTitle,
+            dedupedNormalizedTitles[i],
+            tokens,
+            dedupedTokenSets[i]
+          )
+        ) {
           duplicateIndex = i;
           break;
         }
@@ -160,6 +194,12 @@ export function deduplicatePapers(papers: Paper[]): Paper[] {
       deduplicated[duplicateIndex] = selectBetter(
         deduplicated[duplicateIndex],
         paper
+      );
+      dedupedNormalizedTitles[duplicateIndex] = normalizeTitle(
+        deduplicated[duplicateIndex].title
+      );
+      dedupedTokenSets[duplicateIndex] = tokenizeTitle(
+        deduplicated[duplicateIndex].title
       );
       registerIndexes(
         deduplicated[duplicateIndex],
@@ -173,6 +213,8 @@ export function deduplicatePapers(papers: Paper[]): Paper[] {
 
     const index = deduplicated.length;
     deduplicated.push({ ...paper, id: uuidv4() });
+    dedupedNormalizedTitles[index] = normalizedTitle;
+    dedupedTokenSets[index] = tokens;
     registerIndexes(paper, index, doiToIndex, titleToIndex);
   }
 

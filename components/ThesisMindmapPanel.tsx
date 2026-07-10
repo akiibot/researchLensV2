@@ -32,7 +32,6 @@ interface ThesisMindmapPanelProps {
   onExplorePivot?: (pivot: Pivot) => void;
   onExploreNode?: (node: ThesisMindmapNode, branch: ThesisMindmapBranch) => void;
   initialTool?: ResearchTool;
-  workspaceRequestKey?: number;
 }
 
 type Selection =
@@ -151,8 +150,10 @@ function ResearchToolRail({
               : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
           }`}
           title={tool.label}
+          aria-label={tool.label}
+          aria-current={activeTool === tool.id ? 'true' : undefined}
         >
-          <span className="text-lg text-accent-text">{tool.icon}</span>
+          <span aria-hidden="true" className="text-lg text-accent-text">{tool.icon}</span>
           <span className={compact ? 'text-[11px]' : 'text-xs'}>
             {tool.label}
           </span>
@@ -1111,7 +1112,6 @@ export default function ThesisMindmapPanel({
   onExplorePivot,
   onExploreNode,
   initialTool = 'notes',
-  workspaceRequestKey,
 }: ThesisMindmapPanelProps) {
   const [editableMindmap, setEditableMindmap] = useState(mindmap);
   const [openBranches, setOpenBranches] = useState<Set<string>>(
@@ -1286,17 +1286,6 @@ export default function ThesisMindmapPanel({
       document.body.style.overflow = previousOverflow;
     };
   }, [isWorkspaceOpen]);
-
-  useEffect(() => {
-    if (!workspaceRequestKey) return;
-    const timeout = window.setTimeout(() => {
-      setActiveTool(initialTool);
-      setCanvasMode(initialTool === 'lineage' ? 'lineage' : 'mindmap');
-      setToolPanelCollapsed(false);
-      setIsWorkspaceOpen(true);
-    }, 0);
-    return () => window.clearTimeout(timeout);
-  }, [initialTool, workspaceRequestKey]);
 
   const selectedNode = useMemo(() => {
     if (selection.type !== 'node') return null;

@@ -45,7 +45,7 @@ export default function FacultyProfilePage({
         <div className="skeleton h-72" />
       ) : profile ? (
         <div className="space-y-6">
-          <FacultyCard faculty={profile} showOutreach={false} />
+          <FacultyCard faculty={profile} showOutreach />
           <div className="surface-card p-5">
             <h3 className="text-sm font-semibold text-text-primary mb-3">
               ResearchLens fit evidence

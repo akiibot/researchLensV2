@@ -113,14 +113,19 @@ function computeIdf(
 ): Map<string, number> {
   const idf = new Map<string, number>();
   const n = corpusTokens.length;
+  const docFrequency = new Map<string, number>();
+
+  // Single pass over the corpus (O(total tokens)) instead of scanning every
+  // document per vocabulary term (O(vocabulary * corpus * doc length)).
+  for (const docTokens of corpusTokens) {
+    const seen = new Set(docTokens);
+    for (const term of seen) {
+      docFrequency.set(term, (docFrequency.get(term) || 0) + 1);
+    }
+  }
 
   for (const term of vocabulary) {
-    let docCount = 0;
-    for (const docTokens of corpusTokens) {
-      if (docTokens.includes(term)) {
-        docCount++;
-      }
-    }
+    const docCount = docFrequency.get(term) || 0;
     // Smoothed IDF: log(N / (1 + df))
     idf.set(term, Math.log(n / (1 + docCount)));
   }
@@ -175,7 +180,10 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
 
   if (magnitudeA === 0 || magnitudeB === 0) return 0;
 
-  // Clamp to [0, 1] range (TF-IDF vectors are non-negative)
+  // Clamp to [0, 1]. Smoothed IDF can occasionally go negative for terms
+  // that appear in almost every document, so the raw cosine value isn't
+  // guaranteed non-negative — treat any negative result as "no similarity"
+  // rather than surfacing a confusing negative score.
   return Math.max(0, Math.min(1, dotProduct / (magnitudeA * magnitudeB)));
 }
 

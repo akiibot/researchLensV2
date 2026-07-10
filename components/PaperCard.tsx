@@ -16,6 +16,7 @@
 import React, { useState } from 'react';
 import { Paper } from '@/lib/types';
 import { accessLabel, accessTone, canReadPaper } from '@/lib/paperAccessLabels';
+import Button, { buttonClassNames } from '@/components/ui/Button';
 
 interface PaperCardProps {
   paper: Paper;
@@ -210,27 +211,19 @@ export default function PaperCard({ paper, rank }: PaperCardProps) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Open paper: ${paper.title} in a new tab`}
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border-subtle px-3 text-xs font-medium text-accent-base transition-colors hover:text-accent-hover"
+            className={buttonClassNames('secondary', 'sm')}
           >
             Open Paper
           </a>
         )}
         {readable && (
           <>
-            <button
-              type="button"
-              onClick={downloadPdf}
-              className="min-h-[40px] rounded-lg border border-border-subtle px-3 text-xs font-medium text-text-secondary hover:text-text-primary"
-            >
+            <Button variant="secondary" size="sm" onClick={downloadPdf}>
               Download PDF
-            </button>
-            <button
-              type="button"
-              onClick={readInResearchLens}
-              className="min-h-[40px] rounded-lg bg-accent-base px-3 text-xs font-medium text-white hover:bg-accent-hover"
-            >
+            </Button>
+            <Button variant="primary" size="sm" onClick={readInResearchLens}>
               Read in ResearchLens
-            </button>
+            </Button>
           </>
         )}
         {!readable && (

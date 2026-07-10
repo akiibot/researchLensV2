@@ -8,6 +8,7 @@ import {
 } from './types';
 import { normalizeDoi } from './deduplicator';
 import { downloadCorePdf } from './coreClient';
+import { assertPublicHttpUrl, isObviouslyUnsafeUrl } from './urlSafety';
 
 const MAX_PDF_BYTES = 18 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_MS = 30000;
@@ -172,12 +173,21 @@ export async function fetchLegalPdf(paper: Paper): Promise<Buffer> {
     throw new Error('No legal open PDF URL is available for this paper.');
   }
 
+  await assertPublicHttpUrl(access.pdfUrl);
+
   const response = await axios.get<ArrayBuffer>(access.pdfUrl, {
     responseType: 'arraybuffer',
     timeout: DOWNLOAD_TIMEOUT_MS,
     maxContentLength: MAX_PDF_BYTES,
+    maxRedirects: 5,
     headers: {
       Accept: 'application/pdf,*/*',
+    },
+    beforeRedirect: (_options, { headers }) => {
+      const location = headers?.location;
+      if (typeof location === 'string' && isObviouslyUnsafeUrl(location)) {
+        throw new Error('Redirect to a private/internal address is not allowed.');
+      }
     },
   });
 

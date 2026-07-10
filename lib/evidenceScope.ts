@@ -178,7 +178,7 @@ function buildSummary(
     return `Geography-independent mode removed ${termText} from the ranking query so novelty is judged beyond place.`;
   }
   if (scope === 'compare_local_global') {
-    return `Compare mode found ${globalEvidenceCount} globally related papers and ${localEvidenceCount} papers that also mention ${termText}.`;
+    return `Compare mode found ${localEvidenceCount} of ${globalEvidenceCount} total papers that also mention ${termText}.`;
   }
   return `Balanced mode lightly preferred papers mentioning ${termText} without excluding global evidence.`;
 }
@@ -214,11 +214,16 @@ export function rankPapersWithEvidenceScope(
       : ideaText;
 
   const baseRankedPapers = rankPapers(papers, rankingIdea || ideaText);
-  const scopeRankedPapers = [...baseRankedPapers].sort(
-    (a, b) =>
-      scopedScore(b, detectedGeographyTerms, contentTerms, scope) -
-      scopedScore(a, detectedGeographyTerms, contentTerms, scope)
-  );
+  // Write the scope-adjusted score back onto similarityScore (rather than
+  // only using it as a transient sort comparator) so that applyFacetRanking
+  // — which re-sorts by paper.similarityScore — builds on top of the scope
+  // adjustment instead of silently discarding it.
+  const scopeRankedPapers = baseRankedPapers
+    .map((paper) => ({
+      ...paper,
+      similarityScore: scopedScore(paper, detectedGeographyTerms, contentTerms, scope),
+    }))
+    .sort((a, b) => (b.similarityScore || 0) - (a.similarityScore || 0));
   const rankedPapers = applyFacetRanking(scopeRankedPapers, facetDiagnostics);
   const driftWarning = buildDriftWarning(rankedPapers);
 

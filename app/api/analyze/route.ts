@@ -24,6 +24,7 @@ import {
   UseCaseScenario,
 } from '@/lib/types';
 import { generateGeminiText, hasGeminiCredentials } from '@/lib/geminiClient';
+import { enforceRateLimit, readJsonWithLimit } from '@/lib/apiGuards';
 import {
   OpenAlexSourceMetadata,
   searchOpenAlexSourcesBatch,
@@ -699,7 +700,18 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<AnalysisResult | ApiError>> {
   try {
-    const body: AnalyzeRequest = await request.json();
+    const limited = enforceRateLimit(request, 'analyze', 20, 60_000);
+    if (limited) return limited;
+
+    let body: AnalyzeRequest;
+    try {
+      body = await readJsonWithLimit<AnalyzeRequest>(request, 3 * 1024 * 1024);
+    } catch {
+      return NextResponse.json(
+        { error: 'Request body is too large', code: 'BODY_TOO_LARGE' },
+        { status: 413 }
+      );
+    }
     const {
       idea,
       papers,
@@ -712,6 +724,13 @@ export async function POST(
     if (!idea?.text || !papers?.length) {
       return NextResponse.json(
         { error: 'Research idea and papers are required', code: 'MISSING_INPUT' },
+        { status: 400 }
+      );
+    }
+
+    if (!Array.isArray(gapMatrix)) {
+      return NextResponse.json(
+        { error: 'gapMatrix is required and must be an array', code: 'MISSING_INPUT' },
         { status: 400 }
       );
     }

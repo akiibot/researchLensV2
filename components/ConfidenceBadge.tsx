@@ -28,8 +28,10 @@ interface ConfidenceBadgeProps {
 
 /**
  * Returns the appropriate color classes based on badge type and value.
+ * Shared with other components (e.g. the Decision Hub signals table) so the
+ * risk/confidence/novelty color semantics stay in one place.
  */
-function getColorClasses(
+export function getColorClasses(
   type: 'risk' | 'confidence' | 'novelty',
   value: string
 ): { bg: string; text: string; border: string; glow: string } {
@@ -67,10 +69,20 @@ export default function ConfidenceBadge({
 
   return (
     <div
-      className={`relative flex-1 min-w-[140px] ${colors.bg} ${colors.border} border rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${colors.glow}`}
+      role={basisText ? 'button' : undefined}
+      tabIndex={basisText ? 0 : undefined}
+      className={`relative flex-1 min-w-[140px] ${colors.bg} ${colors.border} border rounded-xl p-4 cursor-pointer transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-accent-base/50 ${colors.glow}`}
       onMouseEnter={() => setShowBasis(true)}
       onMouseLeave={() => setShowBasis(false)}
+      onFocus={() => setShowBasis(true)}
+      onBlur={() => setShowBasis(false)}
       onClick={() => setShowBasis(!showBasis)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setShowBasis((current) => !current);
+        }
+      }}
     >
       <p className="text-xs text-text-secondary font-medium mb-1">{label}</p>
       <p className={`text-lg font-bold ${colors.text} uppercase tracking-wide`}>

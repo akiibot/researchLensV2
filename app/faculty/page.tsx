@@ -3,8 +3,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import FacultyCard from '@/components/FacultyCard';
 import { FacultyProfile, FacultyShortlistItem } from '@/lib/types';
+import { ownerIdHeaders } from '@/lib/ownerToken';
 
 type SortMode = 'citations' | 'works' | 'name';
+
+const PAGE_SIZE = 20;
 
 export default function FacultyDirectoryPage() {
   const [query, setQuery] = useState('');
@@ -13,6 +16,7 @@ export default function FacultyDirectoryPage() {
   const [shortlist, setShortlist] = useState<FacultyShortlistItem[]>([]);
   const [configured, setConfigured] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -21,9 +25,10 @@ export default function FacultyDirectoryPage() {
       fetch('/api/faculty/directory', { signal: controller.signal }).then((r) =>
         r.json()
       ),
-      fetch('/api/faculty/shortlist', { signal: controller.signal }).then((r) =>
-        r.json()
-      ),
+      fetch('/api/faculty/shortlist', {
+        signal: controller.signal,
+        headers: ownerIdHeaders(),
+      }).then((r) => r.json()),
     ])
       .then(([directoryData, shortlistData]) => {
         setFaculty(directoryData.faculty || []);
@@ -65,6 +70,17 @@ export default function FacultyDirectoryPage() {
       return b.citedByCount - a.citedByCount;
     });
   }, [faculty, query, sortMode]);
+
+  // Reset pagination when the filters change, following React's guidance
+  // for adjusting state during render instead of in a separate effect.
+  const [prevFilters, setPrevFilters] = useState({ query, sortMode });
+  if (prevFilters.query !== query || prevFilters.sortMode !== sortMode) {
+    setPrevFilters({ query, sortMode });
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  const pagedFaculty = visibleFaculty.slice(0, visibleCount);
+  const hasMore = visibleCount < visibleFaculty.length;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -140,7 +156,7 @@ export default function FacultyDirectoryPage() {
               <FacultyCard
                 key={item.id}
                 faculty={item.faculty}
-                showOutreach={false}
+                showOutreach
                 reportId={item.reportId}
               />
             ))}
@@ -154,14 +170,44 @@ export default function FacultyDirectoryPage() {
           <div className="skeleton h-52" />
         </div>
       ) : visibleFaculty.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {visibleFaculty.map((profile) => (
-            <FacultyCard
-              key={profile.openAlexAuthorId || profile.id}
-              faculty={profile}
-              showOutreach={false}
-            />
-          ))}
+        <>
+          <p className="text-xs text-text-tertiary mb-3">
+            Showing {pagedFaculty.length} of {visibleFaculty.length}{' '}
+            {visibleFaculty.length === 1 ? 'profile' : 'profiles'}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pagedFaculty.map((profile) => (
+              <FacultyCard
+                key={profile.openAlexAuthorId || profile.id}
+                faculty={profile}
+                showOutreach
+              />
+            ))}
+          </div>
+          {hasMore && (
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                className="min-h-[44px] rounded-xl border border-border-subtle px-5 text-sm font-medium text-text-secondary hover:border-accent-base/40 hover:bg-accent-base/10 hover:text-text-primary transition-all cursor-pointer"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+        </>
+      ) : faculty.length > 0 ? (
+        <div className="surface-card p-8 text-center">
+          <p className="text-sm text-text-secondary">
+            No profiles match &quot;{query}&quot;. Try a different name, institution, or topic.
+          </p>
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="mt-3 text-sm font-medium text-accent-base hover:text-accent-hover cursor-pointer"
+          >
+            Clear search
+          </button>
         </div>
       ) : (
         <div className="surface-card p-8 text-center">

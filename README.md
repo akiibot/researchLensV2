@@ -74,11 +74,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-Apply the migration in `supabase/migrations/001_faculty_directory.sql` to create:
+Apply the migrations in `supabase/migrations/` in order:
 
-- `faculty_profiles`
-- `faculty_topic_scores`
-- `faculty_outreach_drafts`
+- `001_faculty_directory.sql` creates `faculty_profiles`, `faculty_topic_scores`, `faculty_outreach_drafts`.
+- `002_reports_and_shortlists.sql` creates `saved_reports` and `faculty_shortlist`.
+- `003_owner_scoping.sql` adds an `owner_id` column to `saved_reports`/`faculty_shortlist` and removes public client-side read access to them. Reads/writes to these two tables go exclusively through the app's API routes (using the service-role key), scoped by an opaque per-browser id generated client-side (`lib/ownerToken.ts`) — this is a lightweight anti-leak measure, not a real accounts system.
 
 If Supabase is not configured, the app still runs. Faculty discovery returns live matches for reports, but `/faculty` will show an empty unconfigured state.
 

@@ -1,37 +1,12 @@
 import Link from 'next/link';
+import { FUNDING_CONNECTORS } from '@/lib/fundingConnectors';
 
-const CONNECTORS = [
-  {
-    name: 'Grants.gov',
-    href: 'https://www.grants.gov/search-grants',
-    type: 'Government grants',
-    purpose: 'Search US federal funding opportunities by keyword.',
-  },
-  {
-    name: 'NIH RePORTER',
-    href: 'https://reporter.nih.gov/',
-    type: 'Funded project index',
-    purpose: 'Find funded biomedical, behavioral, and public health precedents.',
-  },
-  {
-    name: 'CORDIS',
-    href: 'https://cordis.europa.eu/projects',
-    type: 'EU project database',
-    purpose: 'Study EU-funded research topics, abstracts, and consortium framing.',
-  },
-  {
-    name: 'UKRI Gateway to Research',
-    href: 'https://gtr.ukri.org/',
-    type: 'Research council index',
-    purpose: 'Browse UK-funded project records and fundable language.',
-  },
-  {
-    name: 'World Bank Projects',
-    href: 'https://projects.worldbank.org/',
-    type: 'Development projects',
-    purpose: 'Explore development-oriented project priorities and impact framing.',
-  },
-];
+const CONNECTORS = FUNDING_CONNECTORS.map((connector) => ({
+  name: connector.name,
+  href: connector.url,
+  type: connector.type,
+  purpose: connector.purpose,
+}));
 
 export default function FundingPage() {
   return (

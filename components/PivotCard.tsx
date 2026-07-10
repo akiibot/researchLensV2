@@ -14,6 +14,7 @@
 
 import React, { useState } from 'react';
 import { Pivot } from '@/lib/types';
+import Button from '@/components/ui/Button';
 
 interface PivotCardProps {
   pivot: Pivot;
@@ -110,13 +111,9 @@ export default function PivotCard({ pivot, index, onExplorePivot }: PivotCardPro
           </button>
 
           {onExplorePivot && (
-            <button
-              type="button"
-              onClick={() => onExplorePivot(pivot)}
-              className="text-xs font-medium text-text-primary bg-bg-secondary border border-border-subtle hover:border-accent-base/40 hover:text-accent-hover rounded-lg px-3 py-2 min-h-[44px] transition-all cursor-pointer"
-            >
+            <Button variant="secondary" size="sm" onClick={() => onExplorePivot(pivot)}>
               Explore Pivot
-            </button>
+            </Button>
           )}
         </div>
 

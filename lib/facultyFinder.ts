@@ -7,7 +7,19 @@ import { searchRorOrganizations } from './rorClient';
 
 const OPENALEX_WORKS_BASE = 'https://api.openalex.org/works';
 const MAX_AUTHOR_ENRICHMENT = 12;
+const ROR_CACHE_MAX_ENTRIES = 500;
 const rorCache = new Map<string, { country: string | null }>();
+
+function setRorCache(institution: string, value: { country: string | null }) {
+  // Simple bounded FIFO cache: Map preserves insertion order, so evicting
+  // the oldest key keeps this from growing unbounded on a long-running
+  // instance handling many distinct institution names.
+  if (rorCache.size >= ROR_CACHE_MAX_ENTRIES && !rorCache.has(institution)) {
+    const oldestKey = rorCache.keys().next().value;
+    if (oldestKey !== undefined) rorCache.delete(oldestKey);
+  }
+  rorCache.set(institution, value);
+}
 
 interface CandidateAuthor {
   openAlexAuthorId: string;
@@ -85,7 +97,7 @@ async function normalizeInstitutionCountry(
 
   const matches = await searchRorOrganizations(institution);
   const normalizedCountry = matches[0]?.country || null;
-  rorCache.set(institution, { country: normalizedCountry });
+  setRorCache(institution, { country: normalizedCountry });
   return normalizedCountry || country;
 }
 

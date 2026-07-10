@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { FacultyProfile } from '@/lib/types';
+import { ownerIdHeaders } from '@/lib/ownerToken';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface FacultyCardProps {
   faculty: FacultyProfile;
@@ -17,18 +19,49 @@ export default function FacultyCard({
 }: FacultyCardProps) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [draftTopic, setDraftTopic] = useState('');
+  const [generatedDraft, setGeneratedDraft] = useState<string | null>(null);
+  const [generatingDraft, setGeneratingDraft] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  const effectiveDraft = faculty.outreachDraft || generatedDraft;
 
   const copyDraft = async () => {
-    if (!faculty.outreachDraft) return;
-    await navigator.clipboard.writeText(faculty.outreachDraft);
+    if (!effectiveDraft) return;
+    await copyToClipboard(effectiveDraft);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  };
+
+  const generateDraft = async () => {
+    if (draftTopic.trim().length < 10) {
+      setDraftError('Add a bit more detail about your topic (at least 10 characters).');
+      return;
+    }
+    setGeneratingDraft(true);
+    setDraftError(null);
+    try {
+      const response = await fetch('/api/faculty/outreach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: draftTopic.trim(), faculty }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate outreach draft');
+      }
+      setGeneratedDraft(data.outreachDraft);
+    } catch (error) {
+      setDraftError(error instanceof Error ? error.message : 'Failed to generate outreach draft');
+    } finally {
+      setGeneratingDraft(false);
+    }
   };
 
   const saveToShortlist = async () => {
     const response = await fetch('/api/faculty/shortlist', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ownerIdHeaders() },
       body: JSON.stringify({
         openAlexAuthorId: faculty.openAlexAuthorId,
         reportId,
@@ -129,7 +162,7 @@ export default function FacultyCard({
         </div>
       )}
 
-      {showOutreach && faculty.outreachDraft && (
+      {showOutreach && effectiveDraft && (
         <div className="mt-4 bg-bg-secondary rounded-lg p-3 border border-border-subtle">
           <div className="flex items-center justify-between gap-3 mb-2">
             <p className="text-xs font-medium text-text-primary">
@@ -143,8 +176,34 @@ export default function FacultyCard({
             </button>
           </div>
           <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">
-            {faculty.outreachDraft}
+            {effectiveDraft}
           </p>
+        </div>
+      )}
+
+      {showOutreach && !effectiveDraft && (
+        <div className="mt-4 bg-bg-secondary rounded-lg p-3 border border-border-subtle">
+          <p className="text-xs font-medium text-text-primary mb-2">
+            Draft an outreach email
+          </p>
+          <textarea
+            value={draftTopic}
+            onChange={(e) => setDraftTopic(e.target.value)}
+            placeholder="Briefly describe your research idea or topic..."
+            rows={2}
+            className="w-full rounded-lg border border-border-subtle bg-bg-primary px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary"
+          />
+          {draftError && (
+            <p className="text-xs text-status-error mt-1.5">{draftError}</p>
+          )}
+          <button
+            type="button"
+            onClick={generateDraft}
+            disabled={generatingDraft}
+            className="mt-2 text-xs font-medium text-accent-base hover:text-accent-hover min-h-[44px] inline-flex items-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generatingDraft ? 'Generating...' : 'Generate outreach draft'}
+          </button>
         </div>
       )}
 

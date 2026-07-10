@@ -5,32 +5,12 @@ import {
   upsertFacultyProfiles,
 } from '@/lib/facultyFinder';
 import { generateGeminiText, hasGeminiCredentials } from '@/lib/geminiClient';
+import { enforceRateLimit, readJsonWithLimit } from '@/lib/apiGuards';
+import { buildOutreachPrompt } from '@/lib/facultyOutreach';
 
 interface FacultySearchResponse {
   faculty: FacultyProfile[];
   persisted: boolean;
-}
-
-function buildOutreachPrompt(idea: ResearchIdea, faculty: FacultyProfile): string {
-  return `Write a concise supervisor outreach email for a thesis student.
-
-Student idea: ${idea.text}
-Field: ${idea.field}
-Academic level: ${idea.level}
-
-Potential supervisor:
-Name: ${faculty.name}
-Institution: ${faculty.institution || 'Unknown'}
-Country: ${faculty.country || 'Unknown'}
-Topics: ${(faculty.topics || []).join(', ') || 'Unknown'}
-Evidence papers: ${(faculty.evidencePapers || []).join(' | ') || 'Unknown'}
-
-Rules:
-- 120-160 words.
-- Professional, specific, and respectful.
-- Mention topic fit using the evidence, but do not claim the person has agreed to supervise.
-- Do not invent an email address or private contact details.
-- Return only the email body.`;
 }
 
 async function addOutreachDrafts(
@@ -61,10 +41,21 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<FacultySearchResponse | ApiError>> {
   try {
-    const body = await request.json();
+    const limited = enforceRateLimit(request, 'faculty-search', 20, 60_000);
+    if (limited) return limited;
+
+    let body: { idea: ResearchIdea; papers?: unknown; queries?: unknown };
+    try {
+      body = await readJsonWithLimit(request, 2 * 1024 * 1024);
+    } catch {
+      return NextResponse.json(
+        { error: 'Request body is too large', code: 'BODY_TOO_LARGE' },
+        { status: 413 }
+      );
+    }
     const idea: ResearchIdea = body.idea;
-    const papers: Paper[] = Array.isArray(body.papers) ? body.papers : [];
-    const queries: string[] = Array.isArray(body.queries) ? body.queries : [];
+    const papers: Paper[] = Array.isArray(body.papers) ? (body.papers as Paper[]) : [];
+    const queries: string[] = Array.isArray(body.queries) ? (body.queries as string[]) : [];
 
     if (!idea?.text) {
       return NextResponse.json(

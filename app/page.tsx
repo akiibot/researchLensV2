@@ -2,6 +2,7 @@
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import SearchForm from '@/components/SearchForm';
 import LoadingSteps from '@/components/LoadingSteps';
 import {
@@ -20,6 +21,8 @@ import { rankPapersWithEvidenceScope } from '@/lib/evidenceScope';
 import { analyzeGaps } from '@/lib/gapAnalyzer';
 import { computeResearchSanityMatrix } from '@/lib/sanityMatrix';
 import { buildThesisMindmap } from '@/lib/thesisMindmap';
+import { ownerIdHeaders } from '@/lib/ownerToken';
+import { getFundingConnectorUrl } from '@/lib/fundingConnectors';
 
 type PageState = 'idle' | 'loading' | 'error';
 
@@ -46,7 +49,7 @@ function HomeContent() {
   const [initialIdeaData, setInitialIdeaData] = useState<ResearchIdea | null>(
     null
   );
-  const [selectedMode, setSelectedMode] = useState<AppMode | null>(null);
+  const [selectedMode, setSelectedMode] = useState<AppMode>('student');
   const [pivotContext, setPivotContext] =
     useState<PivotExplorationContext | null>(null);
 
@@ -125,7 +128,7 @@ function HomeContent() {
           throw new Error(error.error || 'Failed to retrieve papers');
         }
 
-        const { papers, sourceCounts, queries, searchDiagnostics } =
+        const { papers, sourceCounts, queries, searchDiagnostics, demoData } =
           await retrieveResponse.json();
 
         if (!papers || papers.length === 0) {
@@ -239,17 +242,17 @@ function HomeContent() {
               searchLinks: [
                 {
                   label: 'Grants.gov search',
-                  url: 'https://www.grants.gov/search-grants',
+                  url: getFundingConnectorUrl('Grants.gov'),
                   purpose: 'Search US federal funding opportunities by keyword.',
                 },
                 {
                   label: 'CORDIS projects',
-                  url: 'https://cordis.europa.eu/projects',
+                  url: getFundingConnectorUrl('CORDIS'),
                   purpose: 'Review EU-funded project examples and framing.',
                 },
                 {
                   label: 'World Bank projects',
-                  url: 'https://projects.worldbank.org/',
+                  url: getFundingConnectorUrl('World Bank Projects'),
                   purpose: 'Explore development-oriented funding themes.',
                 },
               ],
@@ -324,7 +327,12 @@ function HomeContent() {
             sanityMatrix,
             evidenceScopeDiagnostics,
             searchDiagnostics,
+            analysisDegraded: true,
           };
+        }
+
+        if (demoData) {
+          analysisResult.demoData = true;
         }
 
         analysisResult.credibilityReasons = buildCredibilityReasons(
@@ -350,17 +358,51 @@ function HomeContent() {
           sourceCounts,
         });
 
-        sessionStorage.setItem(
+        const trySetSessionStorage = (key: string, value: string): boolean => {
+          try {
+            sessionStorage.setItem(key, value);
+            return true;
+          } catch {
+            return false;
+          }
+        };
+
+        let storedResult = trySetSessionStorage(
           'researchlens_result',
           JSON.stringify(analysisResult)
         );
+
+        if (!storedResult) {
+          // Likely a sessionStorage QuotaExceededError on a large `full`
+          // depth report. Retry with the bulkiest, least essential field
+          // dropped rather than losing the whole report.
+          const slimResult: AnalysisResult = {
+            ...analysisResult,
+            thesisMindmap: undefined,
+            storageTruncated: true,
+          };
+          storedResult = trySetSessionStorage(
+            'researchlens_result',
+            JSON.stringify(slimResult)
+          );
+          if (storedResult) {
+            analysisResult = slimResult;
+          }
+        }
+
+        if (!storedResult) {
+          throw new Error(
+            'Your report was generated successfully, but it was too large to store in this browser tab. Try a smaller retrieval depth (Fast or Balanced) and search again.'
+          );
+        }
+
         sessionStorage.setItem('researchlens_queries', JSON.stringify(queries));
         sessionStorage.setItem('researchlens_idea_data', JSON.stringify(idea));
 
         try {
           const saveResponse = await fetch('/api/reports', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...ownerIdHeaders() },
             body: JSON.stringify({ idea, result: analysisResult, queries }),
           });
 
@@ -392,127 +434,109 @@ function HomeContent() {
     [router]
   );
 
-  if ((pageState === 'idle' || pageState === 'error') && !selectedMode) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 py-12">
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-bg-secondary border border-border-subtle mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-status-success" />
-            <span className="text-xs text-text-secondary font-medium">
-              Research guidance for students and faculty
-            </span>
-          </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
-            Choose your workflow
-          </h2>
-          <p className="text-base sm:text-lg text-text-secondary max-w-xl mx-auto">
-            Validate a thesis idea, find potential supervisors, or review a
-            topic as faculty.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-3xl">
-          <WorkflowButton
-            label="Student"
-            title="Validate my topic and find supervisors"
-            description="Check overlap risk, identify gap dimensions, get pivots, find potential supervisors, and prepare an outreach note."
-            onClick={() => setSelectedMode('student')}
-          />
-          <WorkflowButton
-            label="Faculty"
-            title="Review a topic and explore related researchers"
-            description="Evaluate evidence quality, inspect novelty signals, and discover related researchers or collaborators."
-            onClick={() => setSelectedMode('faculty')}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 py-12">
-      {(pageState === 'idle' || pageState === 'error') && (
-        <div className="text-center mb-10 animate-fade-in">
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
-            {selectedMode === 'faculty' ? 'Find the right' : 'Find your'}{' '}
-            <span className="text-accent-base">
-              {selectedMode === 'faculty' ? 'research fit' : 'research gap'}
-            </span>
-          </h2>
-          <p className="text-base sm:text-lg text-text-secondary max-w-xl mx-auto mb-2">
-            {selectedMode === 'faculty'
-              ? 'Describe a topic. ResearchLens reviews the evidence, novelty signals, and related researchers.'
-              : 'Describe your thesis idea. ResearchLens searches academic databases, identifies overlap, suggests pivots, and finds potential supervisors.'}
-          </p>
-          <p className="text-xs text-text-tertiary max-w-md mx-auto">
-            Every paper shown comes from real API responses; no invented citations.
-          </p>
-          <button
-            type="button"
-            onClick={() => setSelectedMode(null)}
-            className="mt-4 text-xs text-accent-base hover:text-accent-hover cursor-pointer min-h-[44px]"
-          >
-            Change workflow
-          </button>
-        </div>
-      )}
-
-      {pageState === 'error' && (
-        <div className="w-full max-w-2xl mb-6 animate-slide-up">
-          <div className="bg-status-error-bg border border-status-error rounded-xl px-4 py-3">
-            <p className="text-sm text-status-error font-medium">
-              Analysis failed
-            </p>
-            <p className="text-xs text-status-error mt-0.5">{errorMessage}</p>
-          </div>
-        </div>
-      )}
-
-      {(pageState === 'idle' || pageState === 'error') && selectedMode && (
-        <div className="w-full animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <SearchForm
-            onSubmit={handleSubmit}
-            isLoading={false}
-            initialIdea={initialIdea}
-            initialIdeaData={initialIdeaData || undefined}
-            mode={selectedMode}
-            pivotContext={pivotContext}
-          />
-        </div>
-      )}
-
-      {pageState === 'loading' && (
-        <div className="animate-fade-in">
-          <LoadingSteps />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function WorkflowButton({
-  label,
-  title,
-  description,
-  onClick,
-}: {
-  label: string;
-  title: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="surface-card surface-card-hover p-6 text-left min-h-[180px] cursor-pointer"
+    <div
+      className="relative w-full overflow-hidden"
+      style={
+        pageState !== 'loading'
+          ? { backgroundImage: 'linear-gradient(242deg, oklch(31.7% 0.072 283.7) 0%, #000 100%)' }
+          : undefined
+      }
     >
-      <p className="text-xs uppercase tracking-wide text-accent-base font-semibold mb-3">
-        {label}
-      </p>
-      <h3 className="text-xl font-bold text-text-primary mb-2">{title}</h3>
-      <p className="text-sm text-text-secondary">{description}</p>
-    </button>
+      {(pageState === 'idle' || pageState === 'error') && (
+        <div
+          className="pointer-events-none absolute inset-0 hidden overflow-hidden lg:block"
+          aria-hidden="true"
+        >
+          <div
+            className="absolute h-[550px] w-[850px] opacity-60"
+            style={{ left: '-240px', top: '-120px', transform: 'rotate(86deg)' }}
+          >
+            <Image
+              src="/images/hero-swirl.jpg"
+              alt=""
+              fill
+              sizes="850px"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black" />
+          </div>
+          <div
+            className="absolute h-[650px] w-[900px] opacity-50"
+            style={{ right: '-280px', top: '-160px', transform: 'rotate(-104deg)' }}
+          >
+            <Image
+              src="/images/hero-swirl.jpg"
+              alt=""
+              fill
+              sizes="900px"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-bl from-transparent to-accent-base/20" />
+          </div>
+        </div>
+      )}
+
+      <div className="relative z-10 flex min-h-[80vh] flex-col items-center justify-center px-4 py-12">
+        {pageState === 'loading' && (
+          <div className="animate-fade-in">
+            <LoadingSteps />
+          </div>
+        )}
+
+        {(pageState === 'idle' || pageState === 'error') && (
+          <div className="w-full max-w-6xl">
+            {pageState === 'error' && (
+              <div className="mb-6 animate-slide-up">
+                <div className="mx-auto max-w-2xl rounded-xl border border-status-error bg-status-error-bg px-4 py-3 lg:mx-0">
+                  <p className="text-sm font-medium text-status-error">
+                    Analysis failed
+                  </p>
+                  <p className="mt-0.5 text-xs text-status-error">{errorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
+              <div className="animate-fade-in text-center lg:text-left">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border-subtle bg-bg-secondary px-4 py-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-status-success" />
+                  <span className="text-xs font-medium text-text-secondary">
+                    Research guidance for students and faculty
+                  </span>
+                </div>
+                <h2 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+                  {selectedMode === 'faculty' ? 'Find the right' : 'Find your'}{' '}
+                  <span className="text-accent-base">
+                    {selectedMode === 'faculty' ? 'research fit' : 'research gap'}
+                  </span>
+                </h2>
+                <p className="mx-auto mb-2 max-w-xl text-base text-text-secondary sm:text-lg lg:mx-0">
+                  {selectedMode === 'faculty'
+                    ? 'Describe a topic. ResearchLens reviews the evidence, novelty signals, and related researchers.'
+                    : 'Describe your thesis idea. ResearchLens searches academic databases, identifies overlap, suggests pivots, and finds potential supervisors.'}
+                </p>
+                <p className="mx-auto max-w-md text-xs text-text-tertiary lg:mx-0">
+                  Every paper shown comes from real API responses; no invented citations.
+                </p>
+              </div>
+
+              <div className="w-full animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                <SearchForm
+                  onSubmit={handleSubmit}
+                  isLoading={false}
+                  initialIdea={initialIdea}
+                  initialIdeaData={initialIdeaData || undefined}
+                  mode={selectedMode}
+                  onModeChange={setSelectedMode}
+                  pivotContext={pivotContext}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

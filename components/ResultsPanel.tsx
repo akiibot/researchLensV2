@@ -3,24 +3,29 @@
 import React, { useMemo, useState } from 'react';
 import {
   AnalysisResult,
+  AppMode,
   GapDimension,
   Pivot,
   Paper,
-  ResearchSanityCriterion,
   SearchFacetDiagnostics,
   ThesisMindmapBranch,
   ThesisMindmapNode,
 } from '@/lib/types';
+import { copyToClipboard } from '@/lib/clipboard';
+import { getColorClasses } from './ConfidenceBadge';
 import EvidenceScopePanel from './EvidenceScopePanel';
 import FacultyCard from './FacultyCard';
+import GapMatrix from './GapMatrix';
 import PaperCard from './PaperCard';
 import PivotCard from './PivotCard';
 import ResearchFitPanel from './ResearchFitPanel';
-import ThesisMindmapPanel, { ResearchTool } from './ThesisMindmapPanel';
+import ResearchSanityPanel from './ResearchSanityPanel';
+import ThesisMindmapPanel from './ThesisMindmapPanel';
 
 interface ResultsPanelProps {
   result: AnalysisResult;
   queries?: string[];
+  mode?: AppMode;
   onExplorePivot?: (pivot: Pivot) => void;
   onExploreMindmapNode?: (
     node: ThesisMindmapNode,
@@ -29,13 +34,11 @@ interface ResultsPanelProps {
 }
 
 type ResultTool =
+  | 'report'
   | 'canvas'
   | 'evidence'
   | 'pivots'
   | 'researchFit'
-  | 'reader'
-  | 'copilot'
-  | 'lineage'
   | 'diagnostics'
   | 'export';
 
@@ -68,12 +71,20 @@ const TOOL_CONFIG: Array<{
   action: string;
 }> = [
   {
+    id: 'report',
+    label: 'Report',
+    shortLabel: 'Report',
+    icon: 'Home',
+    purpose: 'See the verdict, key signals, and the supervisor-ready packet.',
+    action: 'Start here for the overall decision and a copyable summary.',
+  },
+  {
     id: 'canvas',
     label: 'Canvas',
     shortLabel: 'Canvas',
     icon: 'Map',
-    purpose: 'Turn the report into movable thesis building blocks.',
-    action: 'Open the visual map when you want to organize topic, method, risks, and pivots.',
+    purpose: 'Organize the thesis, read papers, ask Copilot, and trace lineage — all in one workspace.',
+    action: 'Open the visual map to organize topic, method, risks, and pivots. Includes the paper reader, Copilot chat, and lineage graph.',
   },
   {
     id: 'evidence',
@@ -100,30 +111,6 @@ const TOOL_CONFIG: Array<{
     action: 'Use this to turn the topic into grant, journal, or conference decisions.',
   },
   {
-    id: 'reader',
-    label: 'Reader',
-    shortLabel: 'Reader',
-    icon: 'Read',
-    purpose: 'Inspect full-text access and read open papers.',
-    action: 'Use this when a paper needs manual verification.',
-  },
-  {
-    id: 'copilot',
-    label: 'Copilot',
-    shortLabel: 'Copilot',
-    icon: 'Ask',
-    purpose: 'Ask thesis questions using the current report context.',
-    action: 'Use this to prepare supervisor questions or explain a selected card.',
-  },
-  {
-    id: 'lineage',
-    label: 'Lineage',
-    shortLabel: 'Lineage',
-    icon: 'Graph',
-    purpose: 'See prior works, derivative works, and novelty threats around a paper.',
-    action: 'Use this to understand whether one paper sits inside a bigger research cluster.',
-  },
-  {
     id: 'diagnostics',
     label: 'Diagnostics',
     shortLabel: 'Audit',
@@ -143,23 +130,6 @@ const TOOL_CONFIG: Array<{
 
 function getSourceDisplayName(source: string): string {
   return SOURCE_NAMES[source] || source;
-}
-
-function scoreValue(criterion?: ResearchSanityCriterion): string {
-  if (!criterion) return '--';
-  return (criterion.score / 10).toFixed(1);
-}
-
-function scoreLevel(score?: number, risk = false): string {
-  if (score === undefined) return 'Unknown';
-  if (risk) {
-    if (score >= 70) return 'High';
-    if (score >= 45) return 'Moderate';
-    return 'Low';
-  }
-  if (score >= 75) return 'Strong';
-  if (score >= 55) return 'Moderate';
-  return 'Weak';
 }
 
 function saturationImpact(saturation: GapDimension['saturation']): string {
@@ -184,18 +154,6 @@ function facetLabel(facet: string): string {
   return labels[facet] || facet;
 }
 
-function metricTone(score?: number, risk = false): string {
-  if (score === undefined) return 'border-border-subtle bg-bg-secondary';
-  if (risk) {
-    if (score >= 70) return 'border-status-error/30 bg-status-error-bg';
-    if (score >= 45) return 'border-status-warning/30 bg-status-warning-bg';
-    return 'border-status-success/30 bg-status-success-bg';
-  }
-  if (score >= 75) return 'border-status-success/30 bg-status-success-bg';
-  if (score >= 55) return 'border-status-warning/30 bg-status-warning-bg';
-  return 'border-status-error/30 bg-status-error-bg';
-}
-
 function InfoHint({ text }: { text: string }) {
   return (
     <span
@@ -208,36 +166,24 @@ function InfoHint({ text }: { text: string }) {
   );
 }
 
-function MetricCard({
+function DecisionSignalCell({
   label,
   value,
-  caption,
-  helper,
-  tone,
+  type,
 }: {
   label: string;
   value: string;
-  caption: string;
-  helper: string;
-  tone?: string;
+  type: 'risk' | 'confidence' | 'novelty';
 }) {
+  const colors = getColorClasses(type, value);
   return (
-    <div className={`rounded-xl border p-4 ${tone || 'border-border-subtle bg-bg-secondary'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-text-tertiary">
-            {label}
-          </p>
-          <p className="mt-1 text-2xl font-semibold text-text-primary">
-            {value}
-            {value !== '--' && (
-              <span className="text-sm text-text-tertiary"> /10</span>
-            )}
-          </p>
-          <p className="mt-1 text-xs text-text-secondary">{caption}</p>
-        </div>
-        <InfoHint text={helper} />
-      </div>
+    <div className="p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+        {label}
+      </p>
+      <p className={`mt-2 text-2xl font-bold uppercase tracking-wide ${colors.text}`}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -272,28 +218,25 @@ function ToolDock({
   density: DensityLevel;
 }) {
   return (
-    <section className="surface-card p-4">
-      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-accent-base font-semibold">
-            Open only what you need
-          </p>
-          <h3 className="text-lg font-semibold text-text-primary">
-            Research toolkit
-          </h3>
-        </div>
-        <p className="text-xs capitalize text-text-tertiary">
-          {density} view
+    <section className="surface-card p-4 lg:sticky lg:top-4">
+      <div className="mb-4 flex flex-col gap-1">
+        <p className="text-xs uppercase tracking-wide text-accent-base font-semibold">
+          Open only what you need
         </p>
+        <h3 className="text-lg font-semibold text-text-primary">
+          Research toolkit
+        </h3>
+        <p className="text-xs capitalize text-text-tertiary">{density} view</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-9">
+      <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
         {TOOL_CONFIG.map((tool) => (
           <button
             key={tool.id}
             type="button"
             onClick={() => onSelectTool(tool.id)}
             title={tool.purpose}
-            className={`min-h-[72px] rounded-xl border px-3 py-3 text-left transition-all ${
+            aria-current={activeTool === tool.id ? 'true' : undefined}
+            className={`min-h-[72px] w-40 shrink-0 rounded-xl border px-3 py-3 text-left transition-all lg:w-full ${
               activeTool === tool.id
                 ? 'border-accent-base/60 bg-accent-base/15 text-text-primary shadow-lg shadow-accent-base/10'
                 : 'border-border-subtle bg-bg-secondary/70 text-text-secondary hover:border-border-strong hover:bg-bg-tertiary hover:text-text-primary'
@@ -310,7 +253,7 @@ function ToolDock({
             </span>
           </button>
         ))}
-      </div>
+      </nav>
     </section>
   );
 }
@@ -382,6 +325,7 @@ function ApprovalPacketCard({
   verdict,
   nextAction,
   risks,
+  mode,
 }: {
   packetText: string;
   copied: boolean;
@@ -391,20 +335,23 @@ function ApprovalPacketCard({
   verdict: string;
   nextAction: string;
   risks: GapDimension[];
+  mode?: AppMode;
 }) {
+  const isFaculty = mode === 'faculty';
   return (
     <section className="surface-card p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-accent-base font-semibold">
-            Supervisor-ready approval packet
+            {isFaculty ? 'Evidence-based review packet' : 'Supervisor-ready approval packet'}
           </p>
           <h3 className="mt-1 text-xl font-semibold text-text-primary">
-            What to show your supervisor
+            {isFaculty ? 'Formal summary for review' : 'What to show your supervisor'}
           </h3>
           <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-            A compact approval draft: verdict, next move, risks, evidence, and
-            questions.
+            {isFaculty
+              ? 'A concise, evidence-first packet: verdict, risks, and supporting papers.'
+              : 'A compact approval draft: verdict, next move, risks, evidence, and questions.'}
           </p>
         </div>
         <button
@@ -465,7 +412,7 @@ function ApprovalPacketCard({
         </div>
         <div className="rounded-xl border border-border-subtle bg-bg-secondary/70 p-4">
           <p className="text-xs uppercase tracking-wide text-text-tertiary">
-            Ask supervisor
+            {isFaculty ? 'Follow-up questions' : 'Ask supervisor'}
           </p>
           <ul className="mt-3 space-y-2">
             {supervisorQuestions.map((question) => (
@@ -663,33 +610,117 @@ function ToolPanel({
   result,
   queries,
   topGaps,
+  mode,
   packetText,
   copied,
-  onCopy,
+  onCopyPacket,
+  topAction,
   onExplorePivot,
   onExploreMindmapNode,
-  workspaceRequestKey,
   onSelectTool,
 }: {
   activeTool: ResultTool | null;
   result: AnalysisResult;
   queries?: string[];
   topGaps: GapDimension[];
+  mode?: AppMode;
   packetText: string;
   copied: boolean;
-  onCopy: () => void;
+  onCopyPacket: () => void;
+  topAction: string;
   onExplorePivot?: (pivot: Pivot) => void;
   onExploreMindmapNode?: (
     node: ThesisMindmapNode,
     branch: ThesisMindmapBranch
   ) => void;
-  workspaceRequestKey: number;
   onSelectTool: (tool: ResultTool) => void;
 }) {
   if (!activeTool) return null;
 
-  const renderMindmap = (initialTool: ResearchTool) =>
-    result.thesisMindmap ? (
+  const sanity = result.sanityMatrix;
+  const sourceCount = Object.values(result.sourceCounts).filter((count) => count > 0).length;
+
+  if (activeTool === 'report') {
+    return (
+      <div className="space-y-5">
+        <div>
+          <div className="mb-2 flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-status-success" />
+            <span className="text-xs font-medium uppercase tracking-wide text-status-success">
+              Analysis Complete
+            </span>
+          </div>
+          <h2 className="mb-2 text-2xl font-bold text-text-primary sm:text-3xl">
+            Your Research Gap Report
+          </h2>
+          <p className="text-sm text-text-tertiary">
+            Based on {result.totalPapersRetrieved} real papers from {sourceCount} academic
+            source{sourceCount === 1 ? '' : 's'}
+          </p>
+        </div>
+
+        <section className="surface-card p-5">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_520px] xl:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs uppercase tracking-wide text-accent-base font-semibold">
+                  Decision hub
+                </p>
+                {mode && (
+                  <span className="rounded-full border border-border-subtle bg-bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+                    {mode === 'faculty' ? 'Faculty workflow' : 'Student workflow'}
+                  </span>
+                )}
+              </div>
+              <h3 className="mt-2 text-2xl font-semibold text-text-primary">
+                {sanity?.verdict || `${result.noveltySignal} novelty signal`}
+              </h3>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
+                {topAction}
+              </p>
+              {(mode === 'faculty' ? result.facultySummary : result.studentSummary) && (
+                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-text-primary">
+                  {mode === 'faculty' ? result.facultySummary : result.studentSummary}
+                </p>
+              )}
+              <p className="mt-3 text-xs text-text-tertiary">
+                Based on {result.totalPapersRetrieved} papers from {sourceCount}{' '}
+                academic source{sourceCount === 1 ? '' : 's'}.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <DecisionSignalCell label="Overlap Risk" value={result.overlapRisk} type="risk" />
+              <DecisionSignalCell
+                label="Evidence Confidence"
+                value={result.evidenceConfidence}
+                type="confidence"
+              />
+              <DecisionSignalCell
+                label="Novelty Signal"
+                value={result.noveltySignal}
+                type="novelty"
+              />
+            </div>
+          </div>
+        </section>
+
+        <ApprovalPacketCard
+          packetText={packetText}
+          copied={copied}
+          onCopy={onCopyPacket}
+          topPapers={result.topRelatedPapers.slice(0, 3)}
+          supervisorQuestions={buildSupervisorQuestions(topGaps)}
+          verdict={sanity?.verdict || `${result.noveltySignal} novelty signal`}
+          nextAction={topAction}
+          risks={topGaps}
+          mode={mode}
+        />
+      </div>
+    );
+  }
+
+  if (activeTool === 'canvas') {
+    return result.thesisMindmap ? (
       <ThesisMindmapPanel
         mindmap={result.thesisMindmap}
         pivots={result.pivots}
@@ -701,33 +732,12 @@ function ToolPanel({
         queries={queries}
         onExplorePivot={onExplorePivot}
         onExploreNode={onExploreMindmapNode}
-        initialTool={initialTool}
-        workspaceRequestKey={workspaceRequestKey}
+        initialTool="notes"
       />
     ) : (
       <p className="surface-card p-5 text-sm text-text-secondary">
         This report does not include a mindmap yet.
       </p>
-    );
-
-  if (activeTool === 'canvas') return renderMindmap('notes');
-  if (activeTool === 'copilot') return renderMindmap('notes');
-  if (activeTool === 'lineage') return renderMindmap('lineage');
-
-  if (activeTool === 'reader') {
-    return (
-      <div className="space-y-5">
-        <SectionShell
-          title="Paper Reader"
-          helper="Open legal paper links, download available PDFs, or read open full text in ResearchLens."
-        >
-          <div className="grid grid-cols-1 gap-3">
-            {result.topRelatedPapers.map((paper, index) => (
-              <PaperCard key={paper.id} paper={paper} rank={index + 1} />
-            ))}
-          </div>
-        </SectionShell>
-      </div>
     );
   }
 
@@ -901,88 +911,13 @@ function ToolPanel({
           />
         )}
 
-        {result.sanityMatrix && (
-          <SectionShell
-            title="Sanity Scores"
-            helper="Quality-control checks. These are advisory, not proof."
-          >
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              <MetricCard
-                label="Novelty"
-                value={scoreValue(result.sanityMatrix.noveltyPotential)}
-                caption={scoreLevel(result.sanityMatrix.noveltyPotential.score)}
-                helper={result.sanityMatrix.noveltyPotential.rationale}
-              />
-              <MetricCard
-                label="Evidence"
-                value={scoreValue(result.sanityMatrix.evidenceStrength)}
-                caption={scoreLevel(result.sanityMatrix.evidenceStrength.score)}
-                helper={result.sanityMatrix.evidenceStrength.rationale}
-              />
-              <MetricCard
-                label="Feasibility"
-                value={scoreValue(result.sanityMatrix.feasibility)}
-                caption={scoreLevel(result.sanityMatrix.feasibility.score)}
-                helper={result.sanityMatrix.feasibility.rationale}
-              />
-              <MetricCard
-                label="Supervisor"
-                value={scoreValue(result.sanityMatrix.supervisorFit)}
-                caption={scoreLevel(result.sanityMatrix.supervisorFit.score)}
-                helper={result.sanityMatrix.supervisorFit.rationale}
-              />
-              <MetricCard
-                label="Risk"
-                value={scoreValue(result.sanityMatrix.claimRisk)}
-                caption={scoreLevel(result.sanityMatrix.claimRisk.score, true)}
-                helper={result.sanityMatrix.claimRisk.rationale}
-              />
-              <MetricCard
-                label="Overall"
-                value={(result.sanityMatrix.overallScore / 10).toFixed(1)}
-                caption="Combined"
-                helper="Weighted combined score after subtracting claim risk."
-              />
-            </div>
-          </SectionShell>
-        )}
+        {result.sanityMatrix && <ResearchSanityPanel matrix={result.sanityMatrix} />}
 
         <SectionShell
           title="Key Gaps"
-          helper="The gaps ResearchLens thinks matter most for thesis narrowing."
+          helper="The gaps ResearchLens thinks matter most for thesis narrowing. Click a gap to see the supporting evidence."
         >
-          <div className="surface-card overflow-hidden">
-            <div className="grid grid-cols-[1.1fr_1.5fr_0.7fr_0.8fr] gap-3 border-b border-border-subtle px-4 py-3 text-xs uppercase tracking-wide text-text-tertiary">
-              <span>Gap</span>
-              <span>Why it matters</span>
-              <span>Impact</span>
-              <span>Addressability</span>
-            </div>
-            {topGaps.map((gap) => (
-              <div
-                key={gap.dimension}
-                className="grid grid-cols-1 gap-2 border-b border-border-subtle px-4 py-3 last:border-0 md:grid-cols-[1.1fr_1.5fr_0.7fr_0.8fr] md:gap-3"
-              >
-                <div>
-                  <p className="text-sm font-medium capitalize text-text-primary">
-                    {gap.dimension}
-                  </p>
-                  <p className="text-xs text-text-tertiary md:hidden">
-                    {GAP_HELP[gap.dimension]}
-                  </p>
-                </div>
-                <p className="text-sm text-text-secondary">
-                  {gap.evidence || GAP_HELP[gap.dimension]}
-                </p>
-                <p className="text-sm text-text-primary">
-                  {saturationImpact(gap.saturation)}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {gap.saturation === 'open' ? 'High' : 'Medium'}
-                </p>
-              </div>
-            ))}
-          </div>
+          <GapMatrix gaps={topGaps} />
         </SectionShell>
       </div>
     );
@@ -990,23 +925,10 @@ function ToolPanel({
 
   return (
     <div className="space-y-5">
-      <ApprovalPacketCard
-        packetText={packetText}
-        copied={copied}
-        onCopy={onCopy}
-        topPapers={result.topRelatedPapers.slice(0, 3)}
-        supervisorQuestions={buildSupervisorQuestions(topGaps)}
-        verdict={result.sanityMatrix?.verdict || `${result.noveltySignal} novelty signal`}
-        nextAction={
-          result.sanityMatrix?.recommendedActions?.[0] ||
-          result.nextActions?.[0] ||
-          'Narrow the idea into a clearer method, population, or context.'
-        }
-        risks={topGaps}
-      />
-
+      {/* The approval packet is already shown unconditionally above the
+          tool dock, so it isn't repeated here for the default/export view. */}
       {result.supervisorNote && (
-        <SectionShell title="Supervisor Note">
+        <SectionShell title={mode === 'faculty' ? 'Reviewer Note' : 'Supervisor Note'}>
           <div className="surface-card p-5">
             <p className="text-sm italic leading-relaxed text-text-primary">
               {result.supervisorNote}
@@ -1143,10 +1065,13 @@ function buildApprovalPacket({
 export default function ResultsPanel({
   result,
   queries,
+  mode,
   onExplorePivot,
   onExploreMindmapNode,
 }: ResultsPanelProps) {
-  const [activeTool, setActiveTool] = useState<ResultTool | null>(null);
+  // Default to the Report tab (verdict, decision signals, approval packet)
+  // rather than a blank state, so it's the first thing a user sees.
+  const [activeTool, setActiveTool] = useState<ResultTool | null>('report');
   const [copied, setCopied] = useState(false);
   const [dismissedTutorials, setDismissedTutorials] = useState<Set<ResultTool>>(
     () => {
@@ -1176,9 +1101,6 @@ export default function ResultsPanel({
       return 'beginner';
     }
   });
-  const [workspaceRequestKey, setWorkspaceRequestKey] = useState(0);
-
-  const sourceCount = Object.values(result.sourceCounts).filter((count) => count > 0).length;
   const sanity = result.sanityMatrix;
   const topAction =
     sanity?.recommendedActions?.[0] ||
@@ -1225,9 +1147,13 @@ export default function ResultsPanel({
       const usage = stored ? (JSON.parse(stored) as Record<string, number>) : {};
       const next = { ...usage, [tool]: (usage[tool] || 0) + 1 };
       localStorage.setItem('researchlens_tool_usage', JSON.stringify(next));
-      const meaningfulActions = ['evidence', 'copilot', 'lineage', 'diagnostics', 'canvas'].filter(
-        (id) => next[id] && next[id] > 0
-      ).length;
+      const meaningfulActions = [
+        'evidence',
+        'diagnostics',
+        'canvas',
+        'pivots',
+        'researchFit',
+      ].filter((id) => next[id] && next[id] > 0).length;
       const nextDensity: DensityLevel =
         meaningfulActions >= 4 ? 'advanced' : meaningfulActions >= 2 ? 'guided' : 'beginner';
       setDensityLevel(nextDensity);
@@ -1240,9 +1166,6 @@ export default function ResultsPanel({
   const selectTool = (tool: ResultTool) => {
     setActiveTool((current) => (current === tool ? null : tool));
     recordToolUsage(tool);
-    if (tool === 'copilot' || tool === 'lineage') {
-      setWorkspaceRequestKey((current) => current + 1);
-    }
     window.requestAnimationFrame(() => {
       document.getElementById('researchlens-tool-panel')?.scrollIntoView({
         behavior: 'smooth',
@@ -1252,16 +1175,7 @@ export default function ResultsPanel({
   };
 
   const handleCopyPacket = async () => {
-    try {
-      await navigator.clipboard.writeText(packetText);
-    } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = packetText;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
+    await copyToClipboard(packetText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -1274,69 +1188,45 @@ export default function ResultsPanel({
 
   return (
     <div className="animate-fade-in space-y-5">
-      <section className="surface-card p-5">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_520px] xl:items-center">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-accent-base font-semibold">
-              Decision hub
-            </p>
-            <h3 className="mt-2 text-2xl font-semibold text-text-primary">
-              {sanity?.verdict || `${result.noveltySignal} novelty signal`}
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
-              {topAction}
-            </p>
-            <p className="mt-3 text-xs text-text-tertiary">
-              Based on {result.totalPapersRetrieved} papers from {sourceCount}{' '}
-              academic source{sourceCount === 1 ? '' : 's'}.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <MetricCard
-              label="Novelty"
-              value={scoreValue(sanity?.noveltyPotential)}
-              caption={scoreLevel(sanity?.noveltyPotential?.score)}
-              helper="Higher means the idea has more room to become distinct from existing work."
-              tone={metricTone(sanity?.noveltyPotential?.score)}
-            />
-            <MetricCard
-              label="Evidence"
-              value={scoreValue(sanity?.evidenceStrength)}
-              caption={scoreLevel(sanity?.evidenceStrength?.score)}
-              helper="Higher means retrieved papers give stronger support for this assessment."
-              tone={metricTone(sanity?.evidenceStrength?.score)}
-            />
-            <MetricCard
-              label="Risk"
-              value={scoreValue(sanity?.claimRisk)}
-              caption={scoreLevel(sanity?.claimRisk?.score, true)}
-              helper="Higher means the novelty claim needs more caution or narrowing."
-              tone={metricTone(sanity?.claimRisk?.score, true)}
-            />
-          </div>
+      {result.demoData && (
+        <div
+          role="alert"
+          className="rounded-lg border border-amber-400/60 bg-amber-400/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
+        >
+          <span className="font-semibold">Demo data.</span> This report was generated from a
+          static sample paper set, not a live search of your actual idea. Results below are for
+          demonstration only.
         </div>
-      </section>
+      )}
+      {result.storageTruncated && (
+        <div
+          role="alert"
+          className="rounded-lg border border-amber-400/60 bg-amber-400/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
+        >
+          <span className="font-semibold">Report partially trimmed.</span> This report was too
+          large to store in full — the interactive research map was dropped to fit. Everything
+          else below is complete.
+        </div>
+      )}
+      {result.analysisDegraded && !result.demoData && (
+        <div
+          role="alert"
+          className="rounded-lg border border-amber-400/60 bg-amber-400/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200"
+        >
+          <span className="font-semibold">AI analysis unavailable.</span> The papers below were
+          retrieved and ranked normally, but the summaries, pivots, and funding-fit sections use a
+          generic fallback template rather than a tailored AI-generated analysis.
+        </div>
+      )}
+      <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+        <ToolDock
+          activeTool={activeTool}
+          onSelectTool={selectTool}
+          density={densityLevel}
+        />
 
-      <div className="space-y-5">
         <main className="min-w-0 space-y-5">
-          <ApprovalPacketCard
-            packetText={packetText}
-            copied={copied}
-            onCopy={handleCopyPacket}
-            topPapers={result.topRelatedPapers.slice(0, 3)}
-            supervisorQuestions={buildSupervisorQuestions(topGaps)}
-            verdict={sanity?.verdict || `${result.noveltySignal} novelty signal`}
-            nextAction={topAction}
-            risks={topGaps}
-          />
-
-          <ToolDock
-            activeTool={activeTool}
-            onSelectTool={selectTool}
-            density={densityLevel}
-          />
-
-          <BeginnerPathCard />
+          {densityLevel !== 'advanced' && <BeginnerPathCard />}
 
           {selectedTool && !dismissedTutorials.has(selectedTool.id) && (
             <MicroDemoCard
@@ -1351,12 +1241,13 @@ export default function ResultsPanel({
               result={result}
               queries={queries}
               topGaps={topGaps}
+              mode={mode}
               packetText={packetText}
               copied={copied}
-              onCopy={handleCopyPacket}
+              onCopyPacket={handleCopyPacket}
+              topAction={topAction}
               onExplorePivot={onExplorePivot}
               onExploreMindmapNode={onExploreMindmapNode}
-              workspaceRequestKey={workspaceRequestKey}
               onSelectTool={selectTool}
             />
           </div>

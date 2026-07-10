@@ -494,6 +494,9 @@ export interface AnalysisResult {
   savedReportId?: string;
   totalPapersRetrieved: number;
   sourceCounts: Record<string, number>;
+  demoData?: boolean;
+  analysisDegraded?: boolean;
+  storageTruncated?: boolean;
 }
 
 export interface SavedReport {
@@ -524,6 +527,7 @@ export interface RetrievalResponse {
   sourceCounts: Record<string, number>;
   queries: string[];
   searchDiagnostics?: SearchFacetDiagnostics;
+  demoData?: boolean;
 }
 
 /**

@@ -140,9 +140,17 @@ export async function POST(
 
     console.log(`[retrieve] Starting retrieval for: "${idea.text.slice(0, 80)}..."`);
 
-    // Check for demo/fallback mode
-    if (!hasGeminiCredentials()) {
-      console.log('[retrieve] No GOOGLE_API_KEY set — returning mock papers');
+    // Demo mode must be explicitly enabled — it must never silently kick in
+    // just because credentials happen to be missing/misconfigured, since the
+    // mock corpus is unrelated to the user's actual idea and was previously
+    // served as if it were real retrieved evidence.
+    const demoModeEnabled = process.env.DEMO_MODE === 'true';
+    if (demoModeEnabled) {
+      if (!hasGeminiCredentials()) {
+        console.log('[retrieve] DEMO_MODE=true and no Gemini credentials — returning mock papers');
+      } else {
+        console.log('[retrieve] DEMO_MODE=true — returning mock papers');
+      }
       const mockQueries = [
         'social media exam anxiety',
         'social networking sites test anxiety',
@@ -173,6 +181,7 @@ export async function POST(
           generatedQueries: mockQueries,
           skippedSources: [],
         },
+        demoData: true,
       });
     }
 

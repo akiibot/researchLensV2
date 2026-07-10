@@ -32,7 +32,11 @@ export type GeminiPurpose =
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 const DEFAULT_REASONING_MODEL = 'gemini-2.5-pro';
-const DEFAULT_REASONING_FALLBACK_MODEL = 'gemini-2.5-pro';
+// Deliberately a different (lighter) model than the primary reasoning model:
+// if gemini-2.5-pro is erroring/rate-limited, retrying the identical model
+// wastes the retry window instead of degrading to something that's likely
+// still healthy.
+const DEFAULT_REASONING_FALLBACK_MODEL = 'gemini-2.5-flash';
 const DEFAULT_SUMMARY_MODEL = 'gemini-2.5-flash';
 const DEFAULT_LOCATION = 'us-central1';
 
@@ -110,9 +114,28 @@ function loadServiceAccount(): ServiceAccountCredentials | null {
   return parsed as ServiceAccountCredentials;
 }
 
+interface CachedVertexToken {
+  token: string;
+  clientEmail: string;
+  expiresAtMs: number;
+}
+
+let cachedVertexToken: CachedVertexToken | null = null;
+// Refresh a bit before the token's real 1-hour expiry to avoid using a token
+// that expires mid-request.
+const VERTEX_TOKEN_REFRESH_BUFFER_MS = 60_000;
+
 async function getVertexAccessToken(
   credentials: ServiceAccountCredentials
 ): Promise<string> {
+  if (
+    cachedVertexToken &&
+    cachedVertexToken.clientEmail === credentials.client_email &&
+    cachedVertexToken.expiresAtMs > Date.now()
+  ) {
+    return cachedVertexToken.token;
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const claim = base64Url(
@@ -148,10 +171,20 @@ async function getVertexAccessToken(
     throw new Error(`Vertex token request failed: ${tokenResponse.status}`);
   }
 
-  const tokenJson = (await tokenResponse.json()) as { access_token?: string };
+  const tokenJson = (await tokenResponse.json()) as {
+    access_token?: string;
+    expires_in?: number;
+  };
   if (!tokenJson.access_token) {
     throw new Error('Vertex token response did not include an access token');
   }
+
+  const expiresInMs = (tokenJson.expires_in ?? 3600) * 1000;
+  cachedVertexToken = {
+    token: tokenJson.access_token,
+    clientEmail: credentials.client_email,
+    expiresAtMs: Date.now() + expiresInMs - VERTEX_TOKEN_REFRESH_BUFFER_MS,
+  };
 
   return tokenJson.access_token;
 }

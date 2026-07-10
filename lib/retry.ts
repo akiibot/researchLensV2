@@ -25,7 +25,8 @@ function delay(ms: number): Promise<void> {
  *
  * @template T - The return type of the wrapped function
  * @param fn - The async function to retry
- * @param maxRetries - Maximum number of retries (default: 3)
+ * @param maxRetries - Maximum number of total attempts, not additional
+ *   retries after the first call (default: 3 means 3 attempts total)
  * @param baseDelay - Base delay in milliseconds (default: 1000)
  * @returns The resolved value of the function
  */
