@@ -1,37 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* ResearchLens brand palette (from Figma), converted to OKLCH:
-     a deeper, more saturated blue-violet family than the previous
-     indigo-gray theme. */
-  --bg-primary: oklch(13% 0.03 276);
-  --bg-secondary: oklch(21% 0.04 277);
-  --bg-tertiary: oklch(25% 0.047 282);
-  --bg-surface: oklch(19% 0.037 275);
-  --bg-surface-hover: oklch(23% 0.045 279);
+  /* ResearchLens app palette: purple-black canvas, restrained surfaces,
+     and one consistent violet accent family. */
+  --bg-primary: #09081a;
+  --bg-secondary: #111026;
+  --bg-tertiary: #181532;
+  --bg-surface: #131229;
+  --bg-surface-hover: #191634;
 
-  --border-subtle: oklch(30% 0.05 273);
-  --border-strong: oklch(44% 0.104 273);
+  --border-subtle: #292544;
+  --border-strong: #3d3764;
 
-  --text-primary: oklch(97% 0.01 275);
-  --text-secondary: oklch(80% 0.045 270);
-  --text-tertiary: oklch(66% 0.07 273);
+  --text-primary: #f5f3ff;
+  --text-secondary: #c5c1e2;
+  --text-tertiary: #8f89bc;
 
-  --accent-base: oklch(60% 0.16 278);
-  --accent-hover: oklch(65% 0.16 278);
-  --accent-muted: oklch(32% 0.1 283);
-  --accent-text: oklch(82% 0.09 275);
-  --shadow-light: oklch(34% 0.03 275 / 0.42);
-  --shadow-dark: oklch(8% 0.02 276 / 0.55);
-  --shadow-accent: oklch(60% 0.16 278 / 0.16);
+  --accent-base: #6d5cf6;
+  --accent-hover: #8173ff;
+  --accent-muted: #332d5d;
+  --accent-text: #a99cff;
+  --shadow-light: rgb(74 65 126 / 0.18);
+  --shadow-dark: rgb(0 0 0 / 0.48);
+  --shadow-accent: rgb(109 92 246 / 0.18);
   
   /* Status colors */
-  --status-error: oklch(65% 0.15 25);
-  --status-error-bg: oklch(30% 0.05 25);
-  --status-warning: oklch(75% 0.15 80);
-  --status-warning-bg: oklch(35% 0.05 80);
-  --status-success: oklch(70% 0.15 150);
-  --status-success-bg: oklch(35% 0.05 150);
+  --status-error: #ff706b;
+  --status-error-bg: #2b151e;
+  --status-warning: #ffc76b;
+  --status-warning-bg: #2b2418;
+  --status-success: #55d67a;
+  --status-success-bg: #13281f;
 }
 
 @theme inline {
@@ -63,8 +62,12 @@
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: "Ambit", var(--font-sans), system-ui, -apple-system, sans-serif;
   line-height: 1.6;
+}
+
+body:has(.results-app-shell) .app-topbar {
+  display: none;
 }
 
 /* ─── Custom Animations ─────────────────────────────────────────────── */
@@ -114,17 +117,17 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
   box-shadow:
-    10px 10px 24px var(--shadow-dark),
-    -8px -8px 18px var(--shadow-light);
+    0 18px 44px var(--shadow-dark),
+    inset 0 1px 0 rgb(255 255 255 / 0.03);
 }
 
 .surface-card-hover:hover {
   background: var(--bg-surface-hover);
   border-color: var(--border-strong);
   box-shadow:
-    14px 14px 30px var(--shadow-dark),
-    -10px -10px 22px var(--shadow-light),
-    0 0 0 1px var(--shadow-accent);
+    0 22px 52px var(--shadow-dark),
+    0 0 0 1px var(--shadow-accent),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
   transform: translateY(-1px);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }

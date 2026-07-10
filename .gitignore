@@ -49,3 +49,6 @@ next-env.d.ts
 # ide
 .agents/
 skills-lock.json
+
+# local secrets
+.secrets/

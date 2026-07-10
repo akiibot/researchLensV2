@@ -172,7 +172,7 @@ export default function ResultsPage() {
   }
 
   return (
-    <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="results-app-shell min-h-dvh w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Bangla Translation Notice */}
       {idea?.language === 'bn' && (
         <div className="mb-6 p-4 rounded-xl bg-accent-base/10 border border-accent-base/20 text-text-secondary animate-slide-up flex gap-3 items-start">
@@ -193,6 +193,7 @@ export default function ResultsPage() {
         result={result}
         queries={queries}
         mode={idea?.mode}
+        onRefine={handleRefine}
         onExplorePivot={idea ? handleExplorePivot : undefined}
         onExploreMindmapNode={idea ? handleExploreMindmapNode : undefined}
       />
